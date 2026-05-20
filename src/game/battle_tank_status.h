@@ -34,8 +34,9 @@ void load_tank(uint8_t slot);
 void set_respawn(uint8_t slot);
 /* ASM: Get_RandomAim (5172) */
 void get_random_aim(void);
-/* ASM: Relation_To_Byte (4471) */
-uint8_t relation_to_byte(uint8_t a);
+/* ASM: Relation_To_Byte (4471). Использует Carry от предыдущего SBC, поэтому
+ * принимает оба операнда (lhs был в A, rhs в памяти до SBC). */
+uint8_t relation_to_byte(uint8_t lhs, uint8_t rhs);
 /* ASM: Load_AI_Status (5008) */
 uint8_t load_ai_status(uint8_t slot);
 

@@ -61,9 +61,9 @@
 
 ## Demo / Bonus level
 
-- [ ] `Load_DemoLevel` (ASM:820) → `load_demo_level()` в `game/demo_level_screen.c`
-- [ ] `BonusLevel_ButtonCheck` (ASM:873) → `bonus_level_button_check()` в `game/demo_level_screen.c`
-- [ ] `Demo_AI` (ASM:1187) → `demo_ai()` в `game/demo_level_screen.c`
+- [x] `Load_DemoLevel` (ASM:820) → `load_demo_level()` в `game/demo_level_screen.c` — прямая последовательность без внутренних меток; `aBattle`/`aCity` теперь 0xFF-terminated массивы (дубликат данных из title_screen.c — в ASM это общая ROM-таблица); все 19 ASM-шагов в точном порядке (Pause_Flag=1, BkgPal_Number=0, Init_Level_VARs, Player2_Lives=3, обнуления, Make_GrayFrame, Level_Number=0xFF→Load_Level→30, Level_Mode=2, Screen_Off, рисовка BATTLE/CITY, Store_NT_Buffer_InVRAM, Set_PPU, SetUp_LevelVARs, DraW_Normal_HQ, NMI_Wait, TanksOnScreen=5)
+- [x] `BonusLevel_ButtonCheck` (ASM:873) → `bonus_level_button_check()` в `game/demo_level_screen.c` — все 4 ASM-метки восстановлены (`BonusLevel_ButtonCheck` как goto-target для рекурсивного входа, `DemoLevel_Loop`, `End_Demo`, `Button_Pressed`); ASM `BEQ BonusLevel_ButtonCheck` → `goto BonusLevel_ButtonCheck`; ASM `PLA PLA; JMP Title_Loaded` моделируется через возврат кода 1 (caller `begin.c` делает `goto title_loaded`); код 0 → нормальный выход End_Demo → `goto new_scroll` в begin.c
+- [x] `Demo_AI` (ASM:1187) → `demo_ai()` в `game/demo_level_screen.c` — все ASM-метки восстановлены (`loop`, `take_Bonus`, `noBonus`, `at__`, `at___`, `enemiesNotActing`, `load_Direction_DemoAI`, `saveButton_DemoAI`, `next_Demo_AI`); `STA Joypad1_Buttons,X / STA Joypad1_Differ,X` идёт **только в `saveButton_DemoAI`** (не дублируется по веткам как раньше); button-value передаётся через локальную `button` (аналог A-регистра); ASM-индексирование `+2,X`/`+3,X`/`+4,X` отражено в `Tank_Status[N + Counter]`
 
 ## Hi-score / Records
 
@@ -148,8 +148,11 @@
 - [ ] `Button_To_DirectionIndex` (ASM:6644) → `button_to_direction_index()` в `game/battle_tank.c`
 - [ ] `Compare_Block_X` (ASM:4999) → `compare_block_x()` в `game/battle_tank_status.c`
 - [ ] `Compare_Block_Y` (ASM:5054) → `compare_block_y()` в `game/battle_tank_status.c`
-- [ ] `Aim_FirstPlayer` (ASM:5120) → `aim_first_player()` в `game/battle_tank_status.c`
-- [ ] `Load_AI_Status` (ASM:5054) → `load_ai_status()` в `game/battle_tank_status.c`
+- [x] `Aim_FirstPlayer` (ASM:4979) → `aim_first_player(slot)` в `game/battle_tank_status.c` — точка входа конгломерата (`JMP Save_AI_ToStatus` моделируется как tail-call к `save_ai_to_status(slot)`); `AI_X_Aim = Tank_X[0]; AI_Y_Aim = Tank_Y[0]`. Используется как JSR-цель из Status_JumpTable[26]
+- [x] `Aim_ScndPlayer` (ASM:4986) → `aim_scnd_player(slot)` в `game/battle_tank_status.c` — то же что Aim_FirstPlayer но `Tank_X+1/Tank_Y+1` → `Tank_X[1]/Tank_Y[1]`; JSR-цель из Status_JumpTable[24]
+- [x] `Aim_HQ` (ASM:4993) → `aim_hq(slot)` в `game/battle_tank_status.c` — `AI_X_Aim = $78, AI_Y_Aim = $D8`; ASM-fallthrough в Save_AI_ToStatus развёрнут как явный вызов `save_ai_to_status(slot)`; JSR-цель из Status_JumpTable[22]
+- [x] `Save_AI_ToStatus` (ASM:4999) → `save_ai_to_status(slot)` в `game/battle_tank_status.c` — общий хвост Aim_*-конгломерата с единственным RTS; `JSR Load_AI_Status; STA Tank_Status,X` → `Tank_Status[slot] = load_ai_status(slot)`. `; End of function Aim_FirstPlayer` в ASM маркирует конец всей группы из 4 точек входа
+- [x] `Load_AI_Status` (ASM:5008) → `load_ai_status()` в `game/battle_tank_status.c` — все 4 ASM-метки сохранены (`Load_AIStatus_GetRandom`, `LoadSecondPart`, `checkDifferFlag`, `End_Load_AIStatus`); исправлены 2 бага: **(1)** player-branch использовал выдуманную проверку `Tank_Status[1] == 0` вместо ASM-формулы `((slot << 1) ^ Seconds_Counter) & 2`; **(2)** ASM `STA AI_X_DifferFlag` после вычисления `Y*3+X` перезаписывает глобал индексом — в C теперь тоже `AI_X_DifferFlag = ...` явно. AI_X_DifferFlag меняет роль: сначала 0/1/2 (sign), затем 0..8 (индекс таблицы) после `STA`
 - [ ] `Get_RandomAim` (ASM:5215) → `get_random_aim()` в `game/battle_tank_status.c`
 - [ ] `Relation_To_Byte` (ASM:4548) → `relation_to_byte()` в `game/battle_tank_status.c`
 - [ ] `Invisible_Timer_Handle` (ASM:6091) → `invisible_timer_handle()` в `game/battle_tank.c`

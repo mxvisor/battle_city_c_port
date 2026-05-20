@@ -28,6 +28,9 @@ title_loaded:;
     
     // In assembly, it continues after JSR Title_Screen_Loop to Load_DemoLevel
     load_demo_level();
-    bonus_level_button_check();
+    /* ASM: BonusLevel_ButtonCheck возвращает 1 при `JMP Title_Loaded` (Button_Pressed). */
+    if (bonus_level_button_check() == 1) {
+        goto title_loaded;
+    }
     goto new_scroll;
 }

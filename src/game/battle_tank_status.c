@@ -199,31 +199,50 @@ void save_ai_to_status(uint8_t slot) {
     Tank_Status[slot] = load_ai_status(slot);
 }
 
+/* ASM: Load_AI_Status (5008). Все внутренние ASM-метки сохранены. */
 uint8_t load_ai_status(uint8_t slot) {
-    uint8_t x_diff = (uint8_t)(AI_X_Aim - Tank_X[slot]);
-    AI_X_DifferFlag = (uint8_t)(relation_to_byte(x_diff) + 1);
+    uint8_t a;
+    uint8_t y_index;
 
-    uint8_t y_diff = (uint8_t)(AI_Y_Aim - Tank_Y[slot]);
-    AI_Y_DifferFlag = (uint8_t)(relation_to_byte(y_diff) + 1);
+    /* LDA AI_X_Aim; SEC; SBC Tank_X,X — distance по X (carry от SBC даёт знак)
+     * JSR Relation_To_Byte → 1 (lhs>rhs), 0 (equal), $FF (lhs<rhs); +1 → 2/1/0 */
+    AI_X_DifferFlag = (uint8_t)(relation_to_byte(AI_X_Aim, Tank_X[slot]) + 1u);
 
-    uint8_t index = (uint8_t)(AI_Y_DifferFlag * 3u + AI_X_DifferFlag);
-    uint8_t status_index;
+    /* LDA AI_Y_Aim; SEC; SBC Tank_Y,X; JSR Relation_To_Byte; CLC; ADC #1; STA AI_Y_DifferFlag */
+    AI_Y_DifferFlag = (uint8_t)(relation_to_byte(AI_Y_Aim, Tank_Y[slot]) + 1u);
 
-    if (slot >= 2) {
-        if ((get_random_a() & 1u) == 0u) {
-            status_index = index;
-        } else {
-            status_index = (uint8_t)(9u + index);
-        }
-    } else {
-        if (slot == 0 || Tank_Status[1] == 0u) {
-            status_index = index;
-        } else {
-            status_index = (uint8_t)(9u + index);
-        }
-    }
+    /* ASL A; CLC; ADC AI_Y_DifferFlag; CLC; ADC AI_X_DifferFlag; STA AI_X_DifferFlag
+     * A = (Y*2) + Y + X = Y*3 + X — индекс в AI_Status, перезаписывается в AI_X_DifferFlag */
+    a = (uint8_t)((AI_Y_DifferFlag << 1) + AI_Y_DifferFlag + AI_X_DifferFlag);
+    AI_X_DifferFlag = a;
 
-    return AI_Status[status_index];
+    /* CPX #2; BCS Load_AIStatus_GetRandom — для вражеских танков идём в случайную ветку */
+    if (slot >= 2u) goto Load_AIStatus_GetRandom;
+    /* TXA; ASL A; EOR Seconds_Counter; AND #2; BEQ checkDifferFlag */
+    a = (uint8_t)((((uint8_t)(slot << 1)) ^ Seconds_Counter) & 2u);
+    if (a == 0u) goto checkDifferFlag;
+    /* JMP LoadSecondPart */
+    goto LoadSecondPart;
+
+Load_AIStatus_GetRandom:
+    /* JSR Get_Random_A; AND #1; BEQ checkDifferFlag */
+    if ((get_random_a() & 1u) == 0u) goto checkDifferFlag;
+    /* fallthrough → LoadSecondPart */
+    goto LoadSecondPart;
+
+LoadSecondPart:
+    /* LDA #9; CLC; ADC AI_X_DifferFlag; TAY; JMP End_Load_AIStatus */
+    y_index = (uint8_t)(9u + AI_X_DifferFlag);
+    goto End_Load_AIStatus;
+
+checkDifferFlag:
+    /* LDY AI_X_DifferFlag */
+    y_index = AI_X_DifferFlag;
+    /* fallthrough */
+
+End_Load_AIStatus:
+    /* LDA AI_Status,Y; RTS */
+    return AI_Status[y_index];
 }
 
 uint8_t compare_block_x(uint8_t a, uint8_t b) {
@@ -422,13 +441,19 @@ void get_random_aim(void) {
     rise_tank_status_bit(slot);
 }
 
-uint8_t relation_to_byte(uint8_t a) {
-    if (a == 0) {
-        return 0;
-    }
-    if (a & 0x80) {
-        return 0xFF;
-    }
-    return 1;
+/* ASM: Relation_To_Byte (4471).
+ * Использует флаги Z и Carry, выставленные предыдущим SBC (`A - mem`):
+ *   Z == 1  → A == mem      → return 0
+ *   Carry==1 (no borrow, A >= mem) → return 1
+ *   Carry==0 (borrow, A < mem)    → return $FF
+ * В C флаги не сохраняются между функциями, поэтому передаём оба операнда
+ * `lhs` (был в A до SBC) и `rhs` (был в памяти), и сравниваем напрямую. */
+uint8_t relation_to_byte(uint8_t lhs, uint8_t rhs) {
+    /* BEQ End_RelationToByte */
+    if (lhs == rhs) return 0;
+    /* BCS @_ — Carry set после SBC означает lhs >= rhs */
+    if (lhs > rhs) return 1;
+    /* LDA #$FF */
+    return 0xFFu;
 }
 
