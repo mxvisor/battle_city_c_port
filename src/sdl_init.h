@@ -4,7 +4,7 @@
 #include <SDL.h>
 #include <stdint.h>
 
-int sdl_init(void);
+int sdl_init(unsigned scale);
 void sdl_cleanup(void);
 
 uint32_t* sdl_get_pixels(void);

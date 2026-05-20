@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "nes/config.h"
 #include "sdl_init.h"
@@ -6,6 +7,7 @@
 
 int main(int argc, char **argv) {
     current_region = REGION_NTSC;
+    unsigned scale = 1;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--region") == 0 && i + 1 < argc) {
             if (strcmp(argv[i+1], "pal") == 0)
@@ -14,10 +16,13 @@ int main(int argc, char **argv) {
                 current_region = REGION_NTSC;
         } else if (strcmp(argv[i], "--apu-filters") == 0) {
             apu_filters_enabled = 1;
+        } else if (strcmp(argv[i], "--scale") == 0 && i + 1 < argc) {
+            int s = atoi(argv[i+1]);
+            if (s > 0 && s <= 10) scale = (unsigned)s;
         }
     }
 
-    printf("Options: --region ntsc|pal, --apu-filters (90Hz+440Hz HPF, 14kHz LPF)\n");    
+    printf("Options: --region ntsc|pal, --apu-filters (90Hz+440Hz HPF, 14kHz LPF), --scale N (1-10)\n");
 
     const char *chr_paths[] = {
         "data/chr.bin",
@@ -27,7 +32,7 @@ int main(int argc, char **argv) {
 
     nes_init(chr_paths);
 
-    if (sdl_init() < 0) return 1;
+    if (sdl_init(scale) < 0) return 1;
 
     printf("Controls: A = X, B = Z, Select = Right Shift, Start = Enter, Arrows = Up/Down/Left/Right\n");
 

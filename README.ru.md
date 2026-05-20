@@ -13,6 +13,15 @@ cmake --build build
 
 Зависимости: **SDL2** (библиотека + заголовки).
 
+### Сборка с SDL3
+
+```bash
+cmake -B build -S . -DUSE_SDL3=ON
+cmake --build build
+```
+
+Требуется установленная **SDL3** (библиотека + заголовки).
+
 ## Запуск
 
 ```bash
@@ -26,6 +35,7 @@ cmake --build build
 | `--region ntsc` | NTSC-тайминг (по умолчанию). CPU 1.789 МГц, 60 FPS |
 | `--region pal` | PAL-тайминг. CPU 1.662 МГц, 50 FPS |
 | `--apu-filters` | Включить цепочку аппаратных фильтров NES: HPF 90 Hz → HPF 440 Hz → LPF 14 kHz. Без флага — простой DC-removal HPF (~28 Hz) |
+| `--scale N` | Масштаб окна (1–10, по умолчанию: 1) |
 
 Пример:
 ```bash

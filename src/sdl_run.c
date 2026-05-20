@@ -9,6 +9,14 @@
 #include <stdatomic.h>
 #include <stdio.h>
 
+
+#ifdef USE_SDL3
+#undef SDL_RenderCopy
+#define SDL_RenderCopy SDL_RenderTexture
+#undef SDL_QUIT
+#define SDL_QUIT SDL_EVENT_QUIT
+#endif
+
 static void handle_sdl_event(SDL_Event *ev) {
     (void)ev;
 }

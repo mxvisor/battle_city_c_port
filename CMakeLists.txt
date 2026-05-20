@@ -15,7 +15,19 @@ add_compile_options(
 # Link-time optimization
 add_link_options(-flto)
 
-find_package(SDL2 REQUIRED)
+# SDL2 / SDL3 selection
+option(USE_SDL3 "Use SDL3 instead of SDL2" OFF)
+
+if(USE_SDL3)
+    find_package(SDL3 REQUIRED)
+    set(SDL_LIBRARIES SDL3::SDL3)
+    set(SDL_INCLUDE_DIRS /usr/include/SDL3)
+    add_definitions(-DUSE_SDL3)
+else()
+    find_package(SDL2 REQUIRED)
+    set(SDL_LIBRARIES ${SDL2_LIBRARIES})
+    set(SDL_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
+endif()
 
 # Генерируем Си-файл с встроенным BMP
 file(READ ${CMAKE_SOURCE_DIR}/data/chr.bmp chr_hex_content HEX)
@@ -31,11 +43,11 @@ file(GLOB GAME_SOURCES "src/game/*.c")
 list(APPEND SOURCES ${NES_SOURCES} ${GAME_SOURCES})
 
 add_executable(battle_city ${SOURCES} ${CMAKE_BINARY_DIR}/chr_bmp.c)
-target_link_libraries(battle_city PRIVATE ${SDL2_LIBRARIES})
+target_link_libraries(battle_city PRIVATE ${SDL_LIBRARIES})
 
 target_include_directories(battle_city PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/game
     ${CMAKE_SOURCE_DIR}/src/nes
-    ${SDL2_INCLUDE_DIRS}
+    ${SDL_INCLUDE_DIRS}
 )

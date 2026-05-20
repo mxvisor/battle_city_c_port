@@ -13,6 +13,15 @@ cmake --build build
 
 Dependencies: **SDL2** (library + headers).
 
+### Build with SDL3
+
+```bash
+cmake -B build -S . -DUSE_SDL3=ON
+cmake --build build
+```
+
+Requires **SDL3** (library + headers) installed on the system.
+
 ## Run
 
 ```bash
@@ -26,6 +35,7 @@ Dependencies: **SDL2** (library + headers).
 | `--region ntsc` | NTSC timing (default). CPU 1.789 MHz, 60 FPS |
 | `--region pal` | PAL timing. CPU 1.662 MHz, 50 FPS |
 | `--apu-filters` | Enable NES hardware filter chain: HPF 90 Hz → HPF 440 Hz → LPF 14 kHz. Without flag — simple DC-removal HPF (~28 Hz) |
+| `--scale N` | Window scale factor (1–10, default: 1) |
 
 Example:
 ```bash

@@ -4,10 +4,35 @@
 #include "game/nmi.h"
 #include <stdio.h>
 
+
+
+
+
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
 static SDL_Texture *texture = NULL;
 static uint32_t pixels[NES_SCREEN_TOTAL];
+
+#ifdef USE_SDL3
+#undef SDL_sem
+#define SDL_sem SDL_Semaphore
+#undef SDL_SemWait
+#define SDL_SemWait SDL_WaitSemaphore
+#undef SDL_SemPost
+#define SDL_SemPost SDL_SignalSemaphore
+#endif
+
+#ifdef USE_SDL3
+#define SDL_INIT_FLAGS (SDL_INIT_VIDEO | SDL_INIT_AUDIO)
+#else
+#define SDL_INIT_FLAGS (SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)
+#endif
+
+#ifdef USE_SDL3
+typedef bool key_state_t;
+#else
+typedef Uint8 key_state_t;
+#endif
 
 static SDL_sem *wake_sem = NULL;
 static SDL_sem *vblank_sem = NULL;
@@ -24,20 +49,65 @@ uint32_t* sdl_get_pixels(void) { return pixels; }
 SDL_Renderer* sdl_get_renderer(void) { return renderer; }
 SDL_Texture* sdl_get_texture(void) { return texture; }
 
-int sdl_init(void) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS) < 0) {
-        fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+#ifdef USE_SDL3
+static void sdl3_audio_callback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount) {
+    (void)userdata; (void)total_amount;
+    if (additional_amount <= 0) return;
+    uint8_t *buf = SDL_malloc((size_t)additional_amount);
+    if (buf) {
+        audio_callback(NULL, buf, additional_amount);
+        SDL_PutAudioStreamData(stream, buf, additional_amount);
+        SDL_free(buf);
+    }
+}
+#endif
+
+int sdl_init(unsigned scale) {
+    if (scale == 0) scale = 1;
+
+#ifdef USE_SDL3
+    int v = SDL_GetVersion();
+    printf("SDL3 version: %d.%d.%d\n", v / 1000000, (v / 1000) % 1000, v % 1000);
+#else
+    SDL_version v;
+    SDL_GetVersion(&v);
+    printf("SDL2 version: %d.%d.%d\n", v.major, v.minor, v.patch);
+#endif
+
+#ifdef USE_SDL3
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
+#else     
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS) != 0) {   
+#endif        
+        const char *err = SDL_GetError();
+        fprintf(stderr, "SDL_Init failed: %s\n", err && err[0] ? err : "unknown error");
         return -1;
     }
 
-    window = SDL_CreateWindow("Battle City C", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                              NES_SCREEN_W * 2, NES_SCREEN_H * 2, SDL_WINDOW_SHOWN);
+    int w = NES_SCREEN_W * scale;
+    int h = NES_SCREEN_H * scale;
+
+#ifdef USE_SDL3
+    window = SDL_CreateWindow("Battle City C", w, h, 0);
+#else
+    window = SDL_CreateWindow("Battle City C",
+                              SDL_WINDOWPOS_UNDEFINED,
+                              SDL_WINDOWPOS_UNDEFINED,
+                              w, h,
+                              SDL_WINDOW_SHOWN);
+#endif
+
     if (!window) {
         fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         return -1;
     }
 
+#ifdef USE_SDL3
+    renderer = SDL_CreateRenderer(window, NULL);
+#else
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+#endif
+
     if (!renderer) {
         fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
@@ -53,8 +123,32 @@ int sdl_init(void) {
         return -1;
     }
 
+#ifdef USE_SDL3
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+#else
+    SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
+#endif
+
     apu_init();
 
+#ifdef USE_SDL3
+    SDL_AudioSpec spec;
+    spec.freq = 44100;
+    spec.format = SDL_AUDIO_S16;
+    spec.channels = 1;
+
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec);
+    if (dev == 0) {
+        printf("Failed to open audio: %s\n", SDL_GetError());
+    } else {
+        SDL_AudioStream *stream = SDL_CreateAudioStream(&spec, &spec);
+        if (stream) {
+            SDL_SetAudioStreamGetCallback(stream, sdl3_audio_callback, NULL);
+            SDL_BindAudioStream(dev, stream);
+            SDL_ResumeAudioDevice(dev);
+        }
+    }
+#else
     SDL_AudioSpec desired;
     desired.freq = 44100;
     desired.format = AUDIO_S16SYS;
@@ -69,6 +163,7 @@ int sdl_init(void) {
     } else {
         SDL_PauseAudioDevice(dev, 0);
     }
+#endif
 
     wake_sem = SDL_CreateSemaphore(0);
     if (!wake_sem) {
@@ -96,7 +191,7 @@ void sdl_cleanup(void) {
 }
 
 uint8_t plat_poll_buttons_p1(void) {
-    const uint8_t *keys = SDL_GetKeyboardState(NULL);
+    const key_state_t *keys = SDL_GetKeyboardState(NULL);
     uint8_t btns = 0;
     if (keys[SDL_SCANCODE_X]) btns |= 0x01;
     if (keys[SDL_SCANCODE_Z]) btns |= 0x02;
