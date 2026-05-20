@@ -141,17 +141,16 @@ void apu_write_frame(uint8_t value)        { ring_push(0xFF, value); }
 static void clock_quarter(void);
 static void clock_half(void);
 
-static void process_ring_buffer(void) {
+/* Process at most one event from the ring buffer. Called per-sample to
+   distribute register writes evenly instead of in bursts. */
+static inline void process_one_ring_event(void) {
     uint32_t head = atomic_load_explicit(&ring_head, memory_order_acquire);
     uint32_t tail = atomic_load_explicit(&ring_tail, memory_order_relaxed);
     
-    while (tail < head) {
+    if (tail < head) {
         APU_Event *evt = &ring_buffer[tail & RING_MASK];
         
         if (evt->reg == 0xFE) {
-            /* APU_LENGTH_COUNTER.md §Clocking: clearing $4015 bit forces length to 0;
-               setting it has no immediate effect (length only reloads on $4003/$4007/
-               $400B/$400F writes while enabled). */
             for (int i = 0; i < 4; i++) {
                 ch[i].enabled = (evt->value & (1 << i)) != 0;
                 if (!ch[i].enabled) ch[i].length_counter = 0;
@@ -160,7 +159,6 @@ static void process_ring_buffer(void) {
         } else if (evt->reg == 0xFF) {
             frame_counter_mode = (evt->value & 0x80) ? 5 : 4;
             frame_counter_step = 0;
-            /* Writing $4017 with bit 7 set immediately clocks quarter + half frame. */
             if (evt->value & 0x80) {
                 clock_quarter();
                 clock_half();
@@ -170,8 +168,8 @@ static void process_ring_buffer(void) {
         }
         
         tail++;
+        atomic_store_explicit(&ring_tail, tail, memory_order_relaxed);
     }
-    atomic_store_explicit(&ring_tail, tail, memory_order_relaxed);
 }
 
 static void env_step(Channel *c) {
@@ -308,13 +306,13 @@ void audio_callback(void *user, uint8_t *stream, int len) {
     static float hp_prev_in = 0.0f;
 
 
-    process_ring_buffer();
     const RegionParams *rp = region_params(current_region);
     const float cpu_cycles_per_sample = (float)rp->cpu_clock_hz / (float)SAMPLE_RATE;
     const uint16_t *noise_period = rp->noise_period;
     const float dt_per_sample = 1.0f / (float)SAMPLE_RATE;
 
     for (int i = 0; i < samples; i++) {
+        process_one_ring_event();
         process_frame_sequencer(dt_per_sample);
         float pulse_sum = 0.0f;
         float triangle_out = 0.0f;
