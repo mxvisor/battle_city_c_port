@@ -1,0 +1,26 @@
+#include "apu_registers.h"
+
+uint8_t SND_SQUARE1_REG;
+uint8_t pAPU_Pulse1_Ramp_Control_Reg;
+uint8_t pAPU_Pulse1__FT__Reg;
+uint8_t pAPU_Pulse1__CT__Reg;
+uint8_t SND_SQUARE2_REG;
+uint8_t pAPU_Pulse2_Ramp_Control_Reg;
+uint8_t pAPU_Pulse2__FT__Reg;
+uint8_t pAPU_Pulse2__CT__Reg;
+uint8_t SND_TRIANGLE_REG;
+uint8_t pAPU_Triangle_Control_Reg2;
+uint8_t pAPU_Triangle_Frequency_Reg1;
+uint8_t pAPU_Triangle_Frequency_Reg2;
+uint8_t SND_NOISE_REG;
+uint8_t Unused;
+uint8_t pAPU_Noise_Frequency_Reg1;
+uint8_t pAPU_Noise_Frequency_Reg2;
+uint8_t SND_DELTA_REG;
+uint8_t pAPU_Delta_Modulation_DA_Reg;
+uint8_t pAPU_Delta_Modulation_Address_Reg;
+uint8_t pAPU_Delta_Modulation_Data_Length_Reg;
+uint8_t SPR_DMA;
+uint8_t SND_MASTERCTRL_REG;
+uint8_t JOYPAD_PORT1;
+uint8_t JOYPAD_PORT2;
