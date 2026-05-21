@@ -4,6 +4,12 @@
 
 Портирование оригинальной **Battle City** (NES, 1985) на C. Исходный код — точный перенос дизассемблера из репозитория [romhack/battle-city-disassembly](https://github.com/romhack/battle-city-disassembly). Каждая функция, ветвление и побочный эффект сверены с оригинальным ASM.
 
+![Battle City](docs/assets/screenshot.png)
+
+## Состояние проекта
+
+Сверено **114** функций из **218** (по `PORTING.md`).
+
 ## Сборка
 
 ```bash

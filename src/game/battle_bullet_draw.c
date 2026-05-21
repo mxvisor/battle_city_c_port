@@ -74,13 +74,5 @@ void draw_bullet(uint8_t slot) {
     indexed_save_spr(direction, Bullet_X[slot], Bullet_Y[slot]);
 }
 
-void draw_bullet_ricochet(uint8_t a_val) {
-    /* ASM: Draw_Bullet_Ricochet (5269)
-     * tile = ((7 - (a_val >> 4)) << 2) + 0xF1
-     * LSR*4; SEC SBC #7; EOR #FF; CLC ADC #1; ASL*2; ADC #$F1 */
-    uint8_t frame = (uint8_t)(a_val >> 4u);
-    uint8_t t = (uint8_t)(7u - frame);
-    Spr_TileIndex = (uint8_t)((uint8_t)(t << 2u) + 0xF1u);
-    TSA_Pal = 3u;
-    draw_whole_spr();
-}
+/* ASM: Draw_Bullet_Ricochet (5269) определён в battle_tank_draw.c — это
+ * fallthrough в Draw_Ricochet (тоже там). См. battle_tank_draw.c. */

@@ -84,25 +84,25 @@ void add_explode_spr_base(uint8_t delta) {
     draw_small_explode(tile);
 }
 
-/* ASM: Draw_HQBigExplode */
-void draw_hq_big_explode(uint8_t base) {
-    HQExplode_SprBase = base;
-
-    Temp_X = 0x70;
-    Temp_Y = 0xD0;
-    add_explode_spr_base(0xD1);
-
-    Temp_X = 0x80;
-    Temp_Y = 0xD0;
-    add_explode_spr_base(0xD5);
-
-    Temp_X = 0x70;
-    Temp_Y = 0xE0;
-    add_explode_spr_base(0xD9);
-
-    Temp_X = 0x80;
-    Temp_Y = 0xE0;
-    add_explode_spr_base(0xDD);
+/* ASM: Draw_BigExplode (6162). HQExplode_SprBase устанавливается caller'ом
+ * (FourthExplode_Pic ставит 0, FifthExplode_Pic ставит $10) до вызова. */
+void draw_hq_big_explode(void) {
+    /* LDX #$70; LDY #$D0; LDA #$D1; JSR Add_ExplodeSprBase */
+    Temp_X = 0x70u;
+    Temp_Y = 0xD0u;
+    add_explode_spr_base(0xD1u);
+    /* LDX #$80; LDY #$D0; LDA #$D5; JSR Add_ExplodeSprBase */
+    Temp_X = 0x80u;
+    Temp_Y = 0xD0u;
+    add_explode_spr_base(0xD5u);
+    /* LDX #$70; LDY #$E0; LDA #$D9; JSR Add_ExplodeSprBase */
+    Temp_X = 0x70u;
+    Temp_Y = 0xE0u;
+    add_explode_spr_base(0xD9u);
+    /* LDX #$80; LDY #$E0; LDA #$DD; JSR Add_ExplodeSprBase */
+    Temp_X = 0x80u;
+    Temp_Y = 0xE0u;
+    add_explode_spr_base(0xDDu);
 }
 
 /* ASM: End_Ice_Move (HQExplode_JumpTable entry) */
@@ -125,14 +125,20 @@ void third_explode_pic(void) {
     draw_hq_small_explode(0xF9);
 }
 
-/* ASM: FourthExplode_Pic */
+/* ASM: FourthExplode_Pic (6140) — 32x32 smaller explosion */
 void fourth_explode_pic(void) {
-    draw_hq_big_explode(0x00);
+    /* LDA #0; STA HQExplode_SprBase */
+    HQExplode_SprBase = 0u;
+    /* JSR Draw_BigExplode */
+    draw_hq_big_explode();
 }
 
-/* ASM: FifthExplode_Pic */
+/* ASM: FifthExplode_Pic (6151) — biggest 32x32 explosion */
 void fifth_explode_pic(void) {
-    draw_hq_big_explode(0x10);
+    /* LDA #$10; STA HQExplode_SprBase */
+    HQExplode_SprBase = 0x10u;
+    /* JSR Draw_BigExplode */
+    draw_hq_big_explode();
 }
 
 static void (*const HQExplode_JumpTable[])(void) = {
@@ -144,91 +150,64 @@ static void (*const HQExplode_JumpTable[])(void) = {
     fifth_explode_pic,
 };
 
+/* ASM: HQ_Handle (6032). Все 6 внутренних ASM-меток сохранены как goto-цели. */
 void hq_handle(void) {
-    /* ASM: LDA HQArmour_Timer / BEQ HQ_Explode_Handle */
-    if (HQArmour_Timer == 0) {
-        goto HQ_Explode_Handle;
-    }
+    uint8_t a;
+    uint8_t index;
 
-    /* ASM: LDA Frame_Counter / AND #$F / BNE HQ_Explode_Handle */
-    if ((Frame_Counter & 0x0F) != 0) {
-        goto HQ_Explode_Handle;
-    }
-
-    /* ASM: LDA Frame_Counter / AND #63 / BNE Skip_DecHQTimer */
-    if ((Frame_Counter & 0x3F) != 0) {
-        goto Skip_DecHQTimer;
-    }
-
-    /* ASM: DEC HQArmour_Timer / BEQ Normal_HQ_Handle */
+    /* LDA HQArmour_Timer; BEQ HQ_Explode_Handle */
+    if (HQArmour_Timer == 0u) goto HQ_Explode_Handle;
+    /* LDA Frame_Counter; AND #$F; BNE HQ_Explode_Handle — 4 раза/сек */
+    if ((Frame_Counter & 0x0Fu) != 0u) goto HQ_Explode_Handle;
+    /* LDA Frame_Counter; AND #63; BNE Skip_DecHQTimer — каждую секунду */
+    if ((Frame_Counter & 0x3Fu) != 0u) goto Skip_DecHQTimer;
+    /* DEC HQArmour_Timer; BEQ Normal_HQ_Handle */
     HQArmour_Timer--;
-    if (HQArmour_Timer == 0) {
-        goto Normal_HQ_Handle;
-    }
+    if (HQArmour_Timer == 0u) goto Normal_HQ_Handle;
 
 Skip_DecHQTimer:
-    /* ASM: LDA HQArmour_Timer / CMP #4 / BCS HQ_Explode_Handle */
-    if (HQArmour_Timer >= 4) {
-        goto HQ_Explode_Handle;
-    }
-
-    /* ASM: LDA Frame_Counter / AND #$10 / BEQ Normal_HQ_Handle */
-    if ((Frame_Counter & 0x10) == 0) {
-        goto Normal_HQ_Handle;
-    }
-
-    /* ASM: JSR Draw_ArmourHQ / JMP HQ_Explode_Handle */
+    /* LDA HQArmour_Timer; CMP #4; BCS HQ_Explode_Handle */
+    if (HQArmour_Timer >= 4u) goto HQ_Explode_Handle;
+    /* LDA Frame_Counter; AND #$10; BEQ Normal_HQ_Handle — мигание раз в 16 кадров */
+    if ((Frame_Counter & 0x10u) == 0u) goto Normal_HQ_Handle;
+    /* JSR Draw_ArmourHQ; JMP HQ_Explode_Handle */
     draw_armour_hq();
     goto HQ_Explode_Handle;
 
 Normal_HQ_Handle:
-    /* ASM: JSR DraW_Normal_HQ */
+    /* JSR DraW_Normal_HQ; fallthrough → HQ_Explode_Handle */
     draw_normal_hq();
 
 HQ_Explode_Handle:
-    /* ASM: LDA HQ_Status / BEQ End_HQ_Handle */
-    if (HQ_Status == 0) {
-        goto End_HQ_Handle;
-    }
-
-    /* ASM: BMI End_HQ_Handle */
-    if ((int8_t)HQ_Status < 0) {
-        goto End_HQ_Handle;
-    }
-
-    /* ASM: LDA #3 / STA TSA_Pal */
-    TSA_Pal = 3;
-
-    /* ASM: DEC HQ_Status */
+    /* LDA HQ_Status; BEQ End_HQ_Handle */
+    if (HQ_Status == 0u) goto End_HQ_Handle;
+    /* BMI End_HQ_Handle */
+    if ((int8_t)HQ_Status < 0) goto End_HQ_Handle;
+    /* LDA #3; STA TSA_Pal */
+    TSA_Pal = 3u;
+    /* DEC HQ_Status */
     HQ_Status--;
+    /* LDA HQ_Status; LSR A; LSR A — квантизация по 4 кадра */
+    a = (uint8_t)(HQ_Status >> 2u);
+    /* SEC; SBC #5; BPL @_ */
+    a = (uint8_t)(a - 5u);
+    if ((int8_t)a >= 0) goto at_;
+    /* EOR #$FF; CLC; ADC #1 — два-комплемент инверсия */
+    a = (uint8_t)((uint8_t)(~a) + 1u);
 
-    /* ASM: LDA HQ_Status / LSR A / LSR A */
-    uint8_t temp = (uint8_t)(HQ_Status >> 2u);
+at_:
+    /* SEC; SBC #5; BPL @__ */
+    a = (uint8_t)(a - 5u);
+    if ((int8_t)a >= 0) goto at__;
+    /* EOR #$FF; CLC; ADC #1 */
+    a = (uint8_t)((uint8_t)(~a) + 1u);
 
-    /* ASM: SEC / SBC #5 / BPL @_ */
-    int value = (int)temp - 5;
-    if (value < 0) {
-        /* ASM: EOR #$FF / CLC / ADC #1 => value = -value */
-        value = (value ^ 0xFF) + 1;
-    }
-
-at_: /* ASM: @_ */
-    /* ASM: SEC / SBC #5 / BPL @__ */
-    value -= 5;
-    if (value < 0) {
-        /* ASM: EOR #$FF / CLC / ADC #1 => value = -value */
-        value = (value ^ 0xFF) + 1;
-    }
-
-at__: /* ASM: @__ */
-    /* ASM: ASL A / TAY */
-    uint8_t index = (uint8_t)(value << 1);
-
-    /* ASM: LDA HQExplode_JumpTable,Y / STA LowPtr_Byte */
-    /* ASM: LDA HQExplode_JumpTable+1,Y / STA HighPtr_Byte */
-    /* ASM: JMP (LowPtr_Byte) */
-    if (index < (sizeof(HQExplode_JumpTable) / sizeof(HQExplode_JumpTable[0]) * 2)) {
-        HQExplode_JumpTable[index / 2]();
+at__:
+    /* ASL A; TAY */
+    index = (uint8_t)(a << 1);
+    /* LDA HQExplode_JumpTable,Y / +1,Y; JMP (LowPtr_Byte) */
+    if (index < (uint8_t)(sizeof(HQExplode_JumpTable) / sizeof(HQExplode_JumpTable[0]) * 2u)) {
+        HQExplode_JumpTable[index / 2u]();
     }
 
 End_HQ_Handle:

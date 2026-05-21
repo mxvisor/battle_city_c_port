@@ -112,50 +112,42 @@ void draw_char(uint8_t char_index) {
 
     uint8_t x = char_index;
 Add_10:
-    x = (uint8_t)(x - 1);
-    if ((int8_t)x < 0) {
-        goto Add_10_End;
-    }
-    inc_ptr_on_a(0x10);
+    x = (uint8_t)(x - 1u);
+    if ((int8_t)x < 0) goto at_;
+    inc_ptr_on_a(0x10u);
     goto Add_10;
-Add_10_End:
 
-    uint8_t *chr = gets_chr_ptr();
-    uint16_t chr_addr = LowPtr_Byte | (HighPtr_Byte << 8);
+at_:
+    {
+        uint8_t *chr = gets_chr_ptr();
+        uint16_t chr_addr = LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8);
+        uint8_t pattern[8];
+        for (uint8_t i = 0; i < 8u; i++) pattern[i] = chr[chr_addr + i];
+        /* ASM: 8 PHA pushes via PPU_DATA read loop — эмулируем как стек через pattern[]. */
+        Counter = 8u;
 
-    uint8_t pattern[8];
-    for (uint8_t i = 0; i < 8; i++) {
-        pattern[i] = chr[chr_addr + i];
-    }
+    NextByte:
+        Counter--;
+        CHR_Byte = pattern[Counter];
+        Mask_CHR_Byte = 0x80u;
 
-    Counter = 8;
-NextByte:
-    Counter--;
-    CHR_Byte = pattern[Counter];
-    Mask_CHR_Byte = 0x80;
-
-Next_Bit:
-    /* ASM @4019: LDX BrickChar_X; LDY BrickChar_Y; JSR Get_SprCoord_InTiles
-     * (STX Spr_X; STY Spr_Y; JSR GetCoord_InTiles + fallthrough Temp_Coord_shl) */
-    get_spr_coord_in_tiles(BrickChar_X, BrickChar_Y);
-    temp_coord_shl();
-
-    if (CHR_Byte & Mask_CHR_Byte) {
+    Next_Bit:
+        get_spr_coord_in_tiles(BrickChar_X, BrickChar_Y);
+        temp_coord_shl();
+        if ((CHR_Byte & Mask_CHR_Byte) == 0u) goto Empty_Pixel;
         nt_buffer_process_or(0);
-    } else {
+        goto pixelProcessed;
+
+    Empty_Pixel:
         nt_buffer_process_xor(0);
-    }
 
-    BrickChar_X += 4;
-    Mask_CHR_Byte >>= 1;
-    if (Mask_CHR_Byte != 0) {
-        goto Next_Bit;
-    }
-
-    BrickChar_X -= 0x20;
-    BrickChar_Y -= 4;
-    if (Counter != 0) {
-        goto NextByte;
+    pixelProcessed:
+        BrickChar_X = (uint8_t)(BrickChar_X + 4u);
+        Mask_CHR_Byte = (uint8_t)(Mask_CHR_Byte >> 1u);
+        if (Mask_CHR_Byte != 0u) goto Next_Bit;
+        BrickChar_X = (uint8_t)(BrickChar_X - 0x20u);
+        BrickChar_Y = (uint8_t)(BrickChar_Y - 4u);
+        if (Counter != 0u) goto NextByte;
     }
 }
 
@@ -202,15 +194,27 @@ void draw_whole_spr(void) {
     save_spr_to_spr_buffer(tx, ty);
 }
 
+/* ASM: Draw_BrickStr — (LowStrPtr_Byte) заменён на параметр str (как в levels.c). */
 void draw_brick_str(const uint8_t *str) {
     if (!str) return;
-    String_Position = 0;
-    while (str[String_Position] != 0 && str[String_Position] != 0xFF) {
-        uint8_t c = (uint8_t)(str[String_Position] + Char_Index_Base);
-        draw_char(c);
-        Block_X += 0x20;
-        String_Position++;
+    uint8_t y = 0u;
+    String_Position = y;
+
+New_Char:
+    {
+        uint8_t a = str[y];
+        if (a == 0xFFu) goto EOS;
+        y++;
+        String_Position = y;
+        a = (uint8_t)(a + Char_Index_Base);
+        draw_char(a);
+        Block_X = (uint8_t)(Block_X + 0x20u);
+        y = String_Position;
+        goto New_Char;
     }
+
+EOS:
+    return;
 }
 
 void nt_buffer_process_xor(uint8_t value) {
@@ -486,7 +490,8 @@ void string_to_screen_buffer(uint8_t x, uint8_t y, const uint8_t *str) {
     Screen_Buffer[pos++] = buf_hi;
     Screen_Buffer[pos++] = lo;
 
-    HighStrPtr_Byte = buf_hi;
+    /* ASM: STA HighStrPtr_Byte идёт ДО ADC PPU_Addr_Ptr — это raw hi. */
+    HighStrPtr_Byte = hi;
     LowStrPtr_Byte = lo;
 
     uint16_t ppu_addr = ((uint16_t)buf_hi << 8) | lo;

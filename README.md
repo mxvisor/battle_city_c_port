@@ -4,6 +4,12 @@
 
 A port of the original **Battle City** (NES, 1985) to C. Source code is a precise translation of the disassembly from [romhack/battle-city-disassembly](https://github.com/romhack/battle-city-disassembly). Every function, branch, and side effect is verified against the original ASM.
 
+![Battle City](docs/assets/screenshot.png)
+
+## Project Status
+
+**114** out of **218** functions verified (see `PORTING.md`).
+
 ## Build
 
 ```bash

@@ -25,8 +25,8 @@ void fourth_explode_pic(void);
 void fifth_explode_pic(void);
 /* ASM: Draw_HQSmallExplode (6115) */
 void draw_hq_small_explode(uint8_t tile);
-/* ASM: Draw_BigExplode (6160) */
-void draw_hq_big_explode(uint8_t base);
+/* ASM: Draw_BigExplode (6162). HQExplode_SprBase устанавливается caller'ом до вызова. */
+void draw_hq_big_explode(void);
 /* ASM: Add_ExplodeSprBase (6128) */
 void add_explode_spr_base(uint8_t delta);
 /* ASM: Draw_SmallExplode (6121) */

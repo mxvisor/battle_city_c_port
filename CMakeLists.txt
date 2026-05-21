@@ -3,17 +3,19 @@ project(BattleCityC)
 
 set(CMAKE_C_STANDARD 11)
 
-# Compiler flags: optimization + warnings
-add_compile_options(
-    -O2
-    -march=native
-    -flto
-    -Wall -Wextra -Wpedantic
-    -Wno-unused-parameter
-)
+# Compiler flags
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-g -O0 -Wall -Wextra -Wpedantic -Wno-unused-parameter)
+    add_link_options(-g)
+else()
+    add_compile_options(-O2 -march=native -flto -Wall -Wextra -Wpedantic -Wno-unused-parameter)
+    add_link_options(-flto)
+endif()
 
-# Link-time optimization
-add_link_options(-flto)
+option(DEBUG_SCREENS "Enable debug screen" OFF)
+if(DEBUG_SCREENS)
+    add_definitions(-DDEBUG_SCREENS)
+endif()
 
 # SDL2 / SDL3 selection
 option(USE_SDL3 "Use SDL3 instead of SDL2" OFF)

@@ -7,13 +7,24 @@
 
 static const uint8_t aHiscore[] = { 'H', 'I', 'S', 'C', 'O', 'R', 'E', 0xFF };
 
+/* ASM: Draw_RecordDigit (4165) — пропускает ведущие нули в HiScore_String,
+ * прибавляя $20 к Block_X за каждый, затем вызывает Draw_BrickStr с остатком. */
 static void draw_record_digit(void) {
-    const uint8_t *digit = ptr_to_nonzero_str_elem(HiScore_String);
-    while (digit && *digit != 0xFF) {
-        draw_char(*digit);
-        Block_X += 0x20;
-        digit++;
-    }
+    Block_X = 0x10u;
+    Block_Y = 0x64u;
+    Char_Index_Base = 0x30u;
+    uint8_t y = 0u;
+
+at_:
+    if (HiScore_String[y] != 0u) goto at__;
+    y++;
+    Block_X = (uint8_t)(Block_X + 0x20u);
+    goto at_;
+
+at__:
+    /* LDA #0; STA HighStrPtr_Byte; STY LowStrPtr_Byte; JSR Draw_BrickStr */
+    draw_brick_str(&HiScore_String[y]);
+    Char_Index_Base = 0u;
 }
 
 void null_both_hi_score(void) {
@@ -42,12 +53,55 @@ void draw_record_hi_score(void) {
     Snd_RecordPts2 = 1;
     Snd_RecordPts3 = 1;
 
-    while (Snd_RecordPts1 != 0) {
-        nmi_wait();
-        BkgPal_Number = (Frame_Counter & 3) + 5;
-    }
+at_:
+    /* JSR NMI_Wait; LDA Frame_Counter; AND #3; CLC ADC #5; STA BkgPal_Number;
+     * LDA Snd_RecordPts1; BNE @_ */
+    nmi_wait();
+    BkgPal_Number = (uint8_t)((Frame_Counter & 3u) + 5u);
+    if (Snd_RecordPts1 != 0u) goto at_;
 
-    BkgPal_Number = 0;
+    BkgPal_Number = 0u;
 }
 
-int update_hi_score(void) { return 0; }
+/* ASM: Update_HiScore (4198). Если 1P-score > HiScore_String → копируем 1P→HiScore, Y=1.
+ * Затем то же для 2P, Y=$FF.  Возвращает Y (1=1P record, $FF=2P record, 0=none). */
+uint8_t update_hi_score(void) {
+    uint8_t x = 0u;
+    uint8_t y = 0u;
+
+at_:
+    if (HiScore_1P_String[x] != HiScore_String[x]) goto hiscoreFinished;
+    x++;
+    if (x == 7u) goto continueProcess;
+    goto at_;
+
+hiscoreFinished:
+    /* BMI @continueProcess — если 1P[X] - HiScore[X] < 0 (signed) */
+    if ((int8_t)(uint8_t)(HiScore_1P_String[x] - HiScore_String[x]) < 0) goto continueProcess;
+    x = 0u;
+fillLoop:
+    HiScore_String[x] = HiScore_1P_String[x];
+    x++;
+    if (x != 7u) goto fillLoop;
+    y = 1u;
+
+continueProcess:
+    x = 0u;
+loop_2:
+    if (HiScore_2P_String[x] != HiScore_String[x]) goto continueProcess_2;
+    x++;
+    if (x == 7u) goto exit_;
+    goto loop_2;
+
+continueProcess_2:
+    if ((int8_t)(uint8_t)(HiScore_2P_String[x] - HiScore_String[x]) < 0) goto exit_;
+    x = 0u;
+fillLoop_2:
+    HiScore_String[x] = HiScore_2P_String[x];
+    x++;
+    if (x != 7u) goto fillLoop_2;
+    y = 0xFFu;
+
+exit_:
+    return y;
+}

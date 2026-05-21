@@ -67,59 +67,59 @@
 
 ## Hi-score / Records
 
-- [ ] `Draw_Record_HiScore` (ASM:908) → `draw_record_hi_score()` в `game/hiscore_screen.c`
-- [ ] `Draw_RecordDigit` (ASM:4165) → `draw_record_digit()` в `game/hiscore_screen.c`
-- [ ] `Update_HiScore` (ASM:4198) → `update_hi_score()` в `game/hiscore_screen.c`
-- [ ] `Add_Score` (ASM:4255) → `add_score()` в `game/score.c`
-- [ ] `Add_Life` (ASM:2897) → `add_life()` в `game/score.c`
+- [x] `Draw_Record_HiScore` (ASM:908) → `draw_record_hi_score()` в `game/hiscore_screen.c` (at_ wait-loop label)
+- [x] `Draw_RecordDigit` (ASM:4165) → `draw_record_digit()` в `game/hiscore_screen.c` (at_/at__, Char_Index_Base=$30→$0, draw_brick_str)
+- [x] `Update_HiScore` (ASM:4198) → `update_hi_score()` в `game/hiscore_screen.c` (все @-метки: at_/hiscoreFinished/fillLoop/continueProcess/loop_2/continueProcess_2/fillLoop_2/exit_; возвращает Y)
+- [x] `Add_Score` (ASM:4255) → `add_score()` в `game/score.c` (at_/at__/at___ labels, явный carry)
+- [x] `Add_Life` (ASM:2897) → `add_life()` в `game/score.c` (at_/Play_SndAncillaryLife/End_Add_Life labels)
 
 ## Secret message
 
-- [ ] `Show_Secret_Msg` (ASM:952) → `show_secret_msg()` в `game/secret_msg_screen.c`
-- [ ] `Wait_1Second` (ASM:1046) → `wait_1second()` в `game/secret_msg_screen.c`
-- [ ] `Draw_Drop` (ASM:1062) → `draw_drop()` в `game/secret_msg_screen.c`
+- [x] `Show_Secret_Msg` (ASM:952) → `show_secret_msg()` в `game/secret_msg_screen.c` (линейная последовательность вызовов совпадает с ASM)
+- [x] `Wait_1Second` (ASM:1046) → `wait_1second()` в `game/secret_msg_screen.c` (at_ label)
+- [x] `Draw_Drop` (ASM:1062) → `draw_drop()` в `game/secret_msg_screen.c` (at_/at__ labels; респаун 7 итераций как в ASM, не 8)
+- [x] `Draw_RespawnPic` (ASM:1112) → `draw_respawn_pic()` в `game/secret_msg_screen.c` (at_ label, явная 8-битная арифметика)
 
 ## HUD / Lives / Reinforcements / Pause / GameOver
 
-- [ ] `Draw_Player_Lives` (ASM:1472) → `draw_player_lives()` в `game/battle_hud.c`
-- [ ] `Draw_2P_Lives` (label, ASM:1494) → часть `draw_player_lives()`
-- [ ] `Draw_1P_Lives` (label, ASM:1503) → часть `draw_player_lives()`
-- [ ] `Draw_LivesDigit` (label, ASM:1511) → часть `draw_player_lives()`
-- [ ] `Draw_IP` (ASM:1536) → `draw_ip()` в `game/battle_hud.c`
-- [ ] `Draw_IIP` (label, ASM:1550) → часть `draw_ip()`
-- [ ] `Draw_LevelFlag` (ASM:1566) → `draw_level_flag()` в `game/battle_hud.c`
-- [ ] `PointAt_RightScrnColumn` (ASM:1599) → `point_at_right_scrn_column()` в `game/battle_hud.c`
-- [ ] `ReinforceToRAM` (ASM:1618) → `reinforce_to_ram()` в `game/battle_hud.c`
-- [ ] `Draw_EmptyTile` (ASM:1632) → `draw_empty_tile()` в `game/battle_hud.c`
-- [ ] `Draw_Reinforcemets` (ASM:1645) → `draw_reinforcements()` в `game/battle_hud.c`
-- [ ] `Draw_Pause` (ASM:1698) → `draw_pause()` в `game/battle_screen.c`
-- [ ] `Draw_Fixed_GameOver` (ASM:1745) → `draw_fixed_game_over()` в `game/battle_screen.c`
-- [ ] `Draw_Brick_GameOver` (ASM:1131) → `draw_brick_game_over()` в `game/game_over_screen.c`
-- [ ] `GameOver_Str_Move_Handle` (ASM:1772) → `game_over_str_move_handle()` в `game/game_over_screen.c`
-- [ ] `Init_GameOver_Properties` (ASM:5127) → `init_game_over_properties()` в `game/battle_tank_status.c`
-- [ ] `Draw_RespawnPic` (ASM:1099) → `draw_respawn_pic()` в `game/battle_respawn.c`
+- [x] `Draw_Player_Lives` (ASM:1472) → `draw_player_lives()` в `game/battle_hud.c` (метки Draw_2P_Lives/Draw_1P_Lives есть; убран лишний PPU_Addr_Ptr=$1C)
+- [x] `Draw_2P_Lives` (label, ASM:1494) → часть `draw_player_lives()`
+- [x] `Draw_1P_Lives` (label, ASM:1503) → часть `draw_player_lives()`
+- [x] `Draw_LivesDigit` (label, ASM:1511) → часть `draw_player_lives()` (inline, Y = Counter*3 + $12)
+- [x] `Draw_IP` (ASM:1536) → `draw_ip()` в `game/battle_hud.c` (Draw_IIP/locret_C858 labels)
+- [x] `Draw_IIP` (label, ASM:1550) → часть `draw_ip()`
+- [x] `Draw_LevelFlag` (ASM:1566) → `draw_level_flag()` в `game/battle_hud.c` (убран лишний PPU_Addr_Ptr=$1C)
+- [x] `PointAt_RightScrnColumn` (ASM:1599) → `point_at_right_scrn_column()` в `game/battle_hud.c`
+- [x] `ReinforceToRAM` (ASM:1618) → `reinforce_to_ram()` в `game/battle_hud.c`
+- [x] `Draw_EmptyTile` (ASM:1632) → `draw_empty_tile()` в `game/battle_hud.c`
+- [x] `Draw_Reinforcemets` (ASM:1645) → `draw_reinforcements()` в `game/battle_hud.c` (at_ label, DEC×2/BPL)
+- [x] `Draw_Pause` (ASM:1698) → `draw_pause()` в `game/battle_screen.c` (End_Draw_Pause label)
+- [x] `Draw_Fixed_GameOver` (ASM:1745) → `draw_fixed_game_over()` в `game/battle_screen.c`
+- [x] `Draw_Brick_GameOver` (ASM:1131) → `draw_brick_game_over()` в `game/game_over_screen.c` (Next_Frame/End_Draw_Brick_GameOver labels)
+- [x] `GameOver_Str_Move_Handle` (ASM:1772) → `gameover_str_move_handle()` в `game/battle_screen.c` (Hide_String/Check_Motion/Stopped_Motion/End_GameOver_Str_Move labels)
+- [x] `Init_GameOver_Properties` (ASM:5127) → `init_game_over_properties()` в `game/battle_tank_status.c`
 
 ## HQ
 
 - [x] `DraW_Normal_HQ` (ASM:2034) → `draw_normal_hq()` в `game/battle_hq.c`
-- [ ] `Draw_Naked_HQ` (ASM:2089) → `draw_naked_hq()` в `game/battle_hq.c`
-- [ ] `Draw_ArmourHQ` (ASM:2128) → `draw_armour_hq()` в `game/battle_hq.c`
-- [ ] `Draw_Destroyed_HQ` (ASM:2185) → `draw_destroyed_hq()` в `game/battle_hq.c`
-- [ ] `HQ_Handle` (ASM:6091) → `hq_handle()` в `game/battle_hq.c`
-- [ ] `Draw_BigExplode` (ASM:6162) → `draw_hq_big_explode()` в `game/battle_hq.c`
-- [ ] `Add_ExplodeSprBase` (ASM:6128) → `add_explode_spr_base()` в `game/battle_hq.c`
-- [ ] `FirstExplode_Pic` (ASM:6115) → `first_explode_pic()` в `game/battle_hq.c`
-- [ ] `FourthExplode_Pic` (ASM:6140) → `fourth_explode_pic()` в `game/battle_hq.c`
-- [ ] `FifthExplode_Pic` (ASM:6151) → `fifth_explode_pic()` в `game/battle_hq.c`
+- [x] `Draw_Naked_HQ` (ASM:2089) → `draw_naked_hq()` в `game/battle_hq.c` — 2 string-buffer-вызова ($E,$1A) и ($E,$1B); затем inline 4-байтный пакет в Screen_Buffer: `$23, $F3, (NT_Buffer[$3F3] & $3F), $FF` — single-byte attribute update в $23F3
+- [x] `Draw_ArmourHQ` (ASM:2128) → `draw_armour_hq()` в `game/battle_hq.c` — 4 string-buffer-вызова на ($C,$18..$1B); затем 5-байтный пакет: `$23, $F3, $3F, (NT_Buffer[$3F4] & $CC) | $33, $FF` — 2-byte attribute update в $23F3 и $23F4
+- [x] `Draw_Destroyed_HQ` (ASM:2185) → `draw_destroyed_hq()` в `game/battle_hq.c` — 2 string-buffer-вызова, без attribute-update
+- [x] `HQ_Handle` (ASM:6032) → `hq_handle()` в `game/battle_hq.c` — все 6 ASM-меток теперь goto-цели: `Skip_DecHQTimer`, `Normal_HQ_Handle`, `HQ_Explode_Handle`, `at_` (= `@_`), `at__` (= `@__`), `End_HQ_Handle`. Исправлено: было `int`-арифметика, теперь явно `uint8_t` для всех 8-bit операций (SBC #5, EOR #$FF, ADC #1) — раньше работало по совпадению через truncation. `BPL`-инверсии теперь честно через `(int8_t)a >= 0; goto`
+- [x] `Draw_BigExplode` (ASM:6162) → `draw_hq_big_explode(void)` в `game/battle_hq.c` — **изменена сигнатура**: теперь без аргумента (как в ASM). HQExplode_SprBase устанавливается caller'ом (FourthExplode_Pic ставит 0, FifthExplode_Pic ставит $10). Функция-«hq_»-префикс для отличия от `Draw_Big_Explode` (5352) для танков
+- [x] `Add_ExplodeSprBase` (ASM:6128) → `add_explode_spr_base(delta)` в `game/battle_hq.c` — `delta + HQExplode_SprBase` → `draw_small_explode(tile)` → `Spr_TileIndex = tile; draw_whole_spr()`
+- [x] `FirstExplode_Pic` (ASM:6105) → `first_explode_pic()` + ASM `Second/ThirdExplode_Pic` через общий `draw_hq_small_explode(tile)` — соответствует ASM-fallthrough из ThirdExplode в Draw_HQSmallExplode (хранит X/Y = $78/$D8)
+- [x] `FourthExplode_Pic` (ASM:6140) → `fourth_explode_pic()` — теперь явно `HQExplode_SprBase = 0u; draw_hq_big_explode();` (точно как в ASM `LDA #0; STA HQExplode_SprBase; JSR Draw_BigExplode`)
+- [x] `FifthExplode_Pic` (ASM:6151) → `fifth_explode_pic()` — то же что Fourth, но `HQExplode_SprBase = $10u`
 
 ## Points screen
 
-- [ ] `Draw_Pts_Screen` (ASM:2331) → `draw_pts_screen()` в `game/pts_screen.c`
-- [ ] `Draw_Pts_Screen_Template` (ASM:2611) → `draw_pts_screen_template()` в `game/pts_screen.c`
-- [ ] `Draw_Tank_Column` (ASM:2826) → `draw_tank_column()` в `game/pts_screen.c`
-- [ ] `Fill_Attrib_Table` (ASM:2848) → `fill_attrib_table()` в `game/pts_screen.c`
-- [ ] `Draw_Spr_InColumn` (ASM:2886) → `draw_spr_in_column()` в `game/pts_screen.c`
-- [ ] `DrawTankColumn_XTimes` (ASM:3069) → `draw_tank_column_x_times()` в `game/pts_screen.c`
+- [x] `Draw_Pts_Screen` (ASM:2331) → `draw_pts_screen()` в `game/pts_screen.c` — все 12 ASM-меток восстановлены (`DrawPtsScrn_NxtTank`, `DrawPtsScrn_NxtCount`, `at_`/`at__`/`at___`/`at_____`/`at______`, `tanksProcessed`, `DrawPtsScrn_CheckHQ`, `DrawPtsScrn_CheckNum`, `DrawPtsScrn_CheckLives`, `End_Draw_Pts_Screen`); fallthrough-метки сделаны goto-целями для устранения unused-warnings; удалён orphan `draw_player_kill` (был `Draw_PlayerKill:` — это **внутренняя метка** `Draw_Kill_Points`, не отдельная функция; в C-порте уже корректно реализована как goto-label в `battle_tank_draw.c::draw_kill_points`)
+- [x] `Draw_Pts_Screen_Template` (ASM:2611) → `draw_pts_screen_template()` в `game/pts_screen.c` — ASM-метки `Skip_ScndPlayerDraw` и `Skip_ScndPlayerPtsDraw` сохранены; обнуления HiScore-строк через `save_aligned_str_to_scr_buffer` (с авто-сдвигом X для right-alignment); 4×Arrow_Left + опционально 4×Arrow_Right для 2P-режима
+- [x] `Draw_Tank_Column` (ASM:2826) → `draw_tank_column()` в `game/pts_screen.c` — `TSA_Pal=2; затем 4× (Temp_Y = координата; draw_spr_in_column(tile))`. Tile передаётся как параметр (раньше caller ставил Spr_TileIndex напрямую — менее ASM-faithful)
+- [x] `Fill_Attrib_Table` (ASM:2848) → `fill_attrib_table()` в `game/pts_screen.c` — 28 индивидуальных записей в `NT_Buffer+$3C0..$3F7` (через memset для пачек 4-byte + индивидуальные)
+- [x] `Draw_Spr_InColumn` (ASM:2886) → `draw_spr_in_column(tile)` в `game/pts_screen.c` — **изменена сигнатура**: теперь принимает tile (был в ASM A до JSR; ASM делает `STA Spr_TileIndex` внутри функции, теперь и C тоже); `Spr_TileIndex = tile; Temp_X = $81; draw_whole_spr()`
+- [x] `DrawTankColumn_XTimes` (ASM:3069) → `draw_tank_column_x_times(count)` в `game/pts_screen.c` — переписана с ASM-меткой `DrawTankColumn_XTimes:` и `goto`: `NMI_Wait; Draw_Tank_Column; DEX; BNE DrawTankColumn_XTimes` (раньше был `while`-loop)
 
 ## Tank logic — статусы и движение
 
@@ -159,12 +159,12 @@
 
 ## Tank draw — взрывы, очки, ricochet, спавн-картинка
 
-- [ ] `Draw_Small_Explode2` (ASM:5250) → `draw_small_explode2()` в `game/battle_tank_draw.c`
-- [ ] `Draw_Small_Explode1` (ASM:5336) → `draw_small_explode1()` в `game/battle_tank_draw.c`
-- [ ] `Draw_Big_Explode` (ASM:5352) → `draw_big_explode()` в `game/battle_tank_draw.c`
-- [ ] `Draw_Bullet_Ricochet` (ASM:5283) → `draw_bullet_ricochet()` в `game/battle_tank_draw.c`
-- [ ] `Draw_Kill_Points` (ASM:5327) → `draw_kill_points()` в `game/battle_tank_draw.c`
-- [ ] `Set_SprIndex` (ASM:5408) → `set_spr_index()` в `game/battle_tank_draw.c`
+- [x] `Draw_Small_Explode2` (ASM:5250) → `draw_small_explode2()` в `game/battle_tank_draw.c` — `Spr_Attrib=0; Temp_X/Y из Tank_X/Y[slot]; draw_bullet_ricochet(Tank_Status[slot]); Spr_Attrib=$20`
+- [x] `Draw_Small_Explode1` (ASM:5336) → `draw_small_explode1()` в `game/battle_tank_draw.c` — `Spr_Attrib=0; Temp_X/Y; draw_ricochet(8); Spr_Attrib=$20`
+- [x] `Draw_Big_Explode` (ASM:5352) → `draw_big_explode()` в `game/battle_tank_draw.c` — рисует 4 квадранта 32x32-взрыва: 4× `set_spr_index(i); X/Y±=8; draw_whole_spr()`. Counter ставится из slot для Set_SprIndex
+- [x] `Draw_Bullet_Ricochet` (ASM:5269) → `draw_bullet_ricochet()` в `game/battle_tank_draw.c` — ASM-fallthrough в Draw_Ricochet теперь явный вызов `draw_ricochet(a)` после вычисления `((7 - (a_val>>4)) << 2)`. Удалён дубликат в `battle_bullet_draw.c` (был там по ошибке; ASM-расположение — в tank_draw секции)
+- [x] `Draw_Kill_Points` (ASM:5296) → `draw_kill_points()` в `game/battle_tank_draw.c` — все ASM-метки восстановлены как goto-цели: `Draw_PlayerKill`, `Draw_Kill_Points_Skip`. `if (Tank_Type == 0) goto Draw_PlayerKill` вместо if-else; fallthrough Draw_PlayerKill → Draw_Kill_Points_Skip
+- [x] `Set_SprIndex` (ASM:5408) → `set_spr_index(value)` в `game/battle_tank_draw.c` — `value*4 + $D1` через Temp; `Tank_Status[Counter] & $F0; -$30; ^$10` для direction-битов; результат + Temp = Spr_TileIndex; выход через Temp_X/Y из Tank_X/Y[Counter]
 
 ## Bullets — статусы и движение
 
@@ -232,16 +232,16 @@
 
 ## Strings / digits
 
-- [ ] `String_to_Screen_Buffer` (ASM:3602) → `string_to_screen_buffer()` в `game/strings.c`
-- [ ] `Save_Str_To_ScrBuffer` (ASM:3635) → `save_str_to_scr_buffer()` в `game/strings.c`
+- [x] `String_to_Screen_Buffer` (ASM:3602) → `string_to_screen_buffer()` в `game/draw.c` (at_/at__ labels; HighStrPtr_Byte = raw hi)
+- [x] `Save_Str_To_ScrBuffer` (ASM:3635) → `save_str_to_scr_buffer()` в `game/draw.c` (at_/at__/at___ labels, BMI через (int8_t)<0)
 - [x] `PtrToNonzeroStrElem` (ASM:4135) → `ptr_to_nonzero_str_elem()` + `save_aligned_str_to_scr_buffer()` в `game/strings.c`
 - [x] `Num_To_NumString` (ASM:4291) → `num_to_num_string()` в `game/strings.c`
 - [x] `ByteTo_Num_String` (ASM:4339) → `byte_to_num_string()` в `game/strings.c`
-- [ ] `Null_8Bytes_String` (ASM:4316) → `null_8bytes_string()` в `game/strings.c`
-- [ ] `StaffStr_Store` (ASM:3340) → `staff_str_store()` в `game/strings.c`
-- [ ] `StaffStr_Check` (ASM:3368) → `staff_str_check()` в `game/strings.c`
-- [ ] `Draw_Char` (ASM:4026) → `draw_char()` в `game/draw.c`
-- [ ] `Draw_BrickStr` (ASM:4074) → `draw_brick_str()` в `game/draw.c`
+- [x] `Null_8Bytes_String` (ASM:4316) → `null_8bytes_string()` в `game/draw.c` (memset(0,7)+str[7]=$FF)
+- [x] `StaffStr_Store` (ASM:3340) → `staff_str_store()` в `game/reset.c` (at_ label, DEX/BPL)
+- [x] `StaffStr_Check` (ASM:3368) → `staff_str_check()` в `game/reset.c` (at_/ColdBoot labels)
+- [x] `Draw_Char` (ASM:4026) → `draw_char()` в `game/draw.c` (Add_10/at_/NextByte/Next_Bit/Empty_Pixel/pixelProcessed labels)
+- [x] `Draw_BrickStr` (ASM:4074) → `draw_brick_str()` в `game/draw.c` (New_Char/EOS labels)
 
 ## Bonus
 

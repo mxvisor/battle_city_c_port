@@ -1,5 +1,8 @@
 #include "sdl_run.h"
 #include "sdl_init.h"
+#ifdef DEBUG_SCREENS
+#include "debug.h"
+#endif
 #include "nes/config.h"
 #include "nes/ppu_sim.h"
 #include "game/nmi.h"
@@ -17,10 +20,6 @@
 #define SDL_QUIT SDL_EVENT_QUIT
 #endif
 
-static void handle_sdl_event(SDL_Event *ev) {
-    (void)ev;
-}
-
 static void update_game(void) {
     SDL_Event ev;
     while (SDL_PollEvent(&ev)) {
@@ -30,7 +29,6 @@ static void update_game(void) {
             plat_sem_post(plat_get_vblank_sem());
             return;
         }
-        handle_sdl_event(&ev);
     }
 
     ppu_set_vblank_flag();
@@ -45,6 +43,9 @@ static void update_game(void) {
         SDL_RenderPresent(sdl_get_renderer());
 
         nmi();
+#ifdef DEBUG_SCREENS
+        debug();
+#endif
         plat_sem_post(plat_get_wake_sem());
     } else {
         SDL_RenderClear(sdl_get_renderer());

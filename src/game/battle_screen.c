@@ -29,10 +29,12 @@ void gameover_str_move_handle(void) {
         goto Check_Motion;
     }
 
-    GameOverStr_Timer -= 1;
-    if (GameOverStr_Timer == 0) {
-        GameOverStr_Y = 0xF0;
-    }
+    GameOverStr_Timer = (uint8_t)(GameOverStr_Timer - 1u);
+    if (GameOverStr_Timer != 0u) goto Check_Motion;
+    goto Hide_String;
+
+Hide_String:
+    GameOverStr_Y = 0xF0u;
 
 Check_Motion:
     if (GameOverStr_Timer < 10) {
@@ -264,32 +266,27 @@ void draw_fixed_game_over(void) {
     Spr_Attrib = 0x20;
 }
 
+/* ASM: Draw_Pause (1698). Мигающее "PAUSE" пятью спрайтами 8x16, раз в 16 кадров. */
 void draw_pause(void) {
-    if (Pause_Flag == 0) {
-        return;
-    }
+    if (Pause_Flag == 0u) goto End_Draw_Pause;
+    if ((Frame_Counter & 0x10u) == 0u) goto End_Draw_Pause;
 
-    if ((Frame_Counter & 0x10) == 0) {
-        return;
-    }
+    TSA_Pal = 3u;
+    Spr_Attrib = 0u;
 
-    TSA_Pal = 3;
-    Spr_Attrib = 0;
+    Spr_TileIndex = 0x17u; /* P */
+    save_spr_to_spr_buffer(0x64u, 0x80u);
+    Spr_TileIndex = 0x19u; /* A */
+    save_spr_to_spr_buffer(0x6Cu, 0x80u);
+    Spr_TileIndex = 0x1Bu; /* U */
+    save_spr_to_spr_buffer(0x74u, 0x80u);
+    Spr_TileIndex = 0x1Du; /* S */
+    save_spr_to_spr_buffer(0x7Cu, 0x80u);
+    Spr_TileIndex = 0x1Fu; /* E */
+    save_spr_to_spr_buffer(0x84u, 0x80u);
 
-    Spr_TileIndex = 0x17;
-    save_spr_to_spr_buffer(0x64, 0x80);
+    Spr_Attrib = 0x20u;
 
-    Spr_TileIndex = 0x19;
-    save_spr_to_spr_buffer(0x6C, 0x80);
-
-    Spr_TileIndex = 0x1B;
-    save_spr_to_spr_buffer(0x74, 0x80);
-
-    Spr_TileIndex = 0x1D;
-    save_spr_to_spr_buffer(0x7C, 0x80);
-
-    Spr_TileIndex = 0x1F;
-    save_spr_to_spr_buffer(0x84, 0x80);
-
-    Spr_Attrib = 0x20;
+End_Draw_Pause:
+    return;
 }

@@ -22,17 +22,19 @@ static const uint8_t aWhoLovesNoriko[] = {
 };
 static const uint8_t aDot[] = { '.', 0xFF };
 
-static void draw_respawn_pic(void) {
+/* ASM: Draw_RespawnPic (1112). Tile = $A1 + (3 - |3 - Counter|) * 4. */
+void draw_respawn_pic(void) {
     nmi_wait();
-    TSA_Pal = 3;
-
-    int diff = 3 - (int)Counter;
-    if (diff < 0) {
-        diff = -diff;
-    }
-
-    int tile_index = (3 - diff) << 2;
-    Spr_TileIndex = (uint8_t)(0xA1 + tile_index);
+    TSA_Pal = 3u;
+    /* LDA #3; SEC; SBC Counter; BPL @_; EOR #$FF; CLC; ADC #1 */
+    uint8_t a = (uint8_t)(3u - Counter);
+    if ((int8_t)a >= 0) goto at_;
+    a = (uint8_t)(~a + 1u);
+at_:
+    Temp = a;
+    /* LDA #3; SEC; SBC Temp; ASL; ASL; CLC; ADC #$A1 */
+    a = (uint8_t)((uint8_t)(3u - Temp) << 2u);
+    Spr_TileIndex = (uint8_t)(a + 0xA1u);
     Temp_X = Block_X;
     Temp_Y = Block_Y;
     draw_whole_spr();
@@ -81,33 +83,38 @@ void show_secret_msg(void) {
     set_ppu();
 }
 
+/* ASM: Draw_Drop (1062). Сначала 8 кадров respawn-анимации (по 4 фрейма каждый),
+ * затем капля падает по 1 пикселю до Block_Y = $F8. */
 void draw_drop(void) {
-    Block_X = 0x78;
-    Block_Y = 0x1E;
-    Counter = 0;
+    Block_X = 0x78u;
+    Block_Y = 0x1Eu;
+    Counter = 0u;
 
-    while (Counter < 8) {
-        draw_respawn_pic();
-        draw_respawn_pic();
-        draw_respawn_pic();
-        draw_respawn_pic();
-        Counter++;
-    }
+at_:
+    draw_respawn_pic();
+    draw_respawn_pic();
+    draw_respawn_pic();
+    draw_respawn_pic();
+    Counter++;
+    /* CMP #7; BNE @_ — ASM CMP сравнивает после INC, т.е. цикл идёт пока Counter != 7,
+     * но это даёт Counter = 1..7 (7 итераций). C-версия (Counter < 8 = 8 итераций) выглядит как баг C-порта; следуем ASM. */
+    if (Counter != 7u) goto at_;
 
-    while (Block_Y != 0xF8) {
-        nmi_wait();
-        Block_Y += 1;
-        Spr_TileIndex = 0x9D;
-        TSA_Pal = 1;
-        Temp_X = Block_X;
-        Temp_Y = Block_Y;
-        draw_whole_spr();
-    }
+at__:
+    nmi_wait();
+    Block_Y = (uint8_t)(Block_Y + 1u);
+    Spr_TileIndex = 0x9Du;
+    TSA_Pal = 1u;
+    Temp_X = Block_X;
+    Temp_Y = Block_Y;
+    draw_whole_spr();
+    if (Block_Y != 0xF8u) goto at__;
 }
 
+/* ASM: Wait_1Second (1046). Ждёт пока Frame_Counter & $3F не обнулится (60 кадров ≈ 1с). */
 void wait_1second(void) {
-    Frame_Counter = 0;
-    do {
-        nmi_wait();
-    } while ((Frame_Counter & 0x3F) != 0);
+    Frame_Counter = 0u;
+at_:
+    nmi_wait();
+    if ((Frame_Counter & 0x3Fu) != 0u) goto at_;
 }

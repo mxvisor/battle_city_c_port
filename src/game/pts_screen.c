@@ -212,10 +212,12 @@ at______: /* ASM: @______ */
 
     /* ASM: BNE DrawPtsScrn_CheckHQ; JMP End_Draw_Pts_Screen */
     if (CursorPos == 0) goto End_Draw_Pts_Screen;
+    goto DrawPtsScrn_CheckHQ;
 
 DrawPtsScrn_CheckHQ:
     /* ASM: BNE DrawPtsScrn_CheckNum; JMP End_Draw_Pts_Screen */
     if (HQ_Status == 0) goto End_Draw_Pts_Screen;
+    goto DrawPtsScrn_CheckNum;
 
 DrawPtsScrn_CheckNum:
     /* ASM: CMP TotalEnmy_KilledBy1P; BCS DrawPtsScrn_CheckLives */
@@ -272,62 +274,43 @@ End_Draw_Pts_Screen:
     BkgPal_Number = 0;
 }
 
-void draw_spr_in_column(void) {
-    Temp_X = 0x81;
+/* ASM: Draw_Spr_InColumn (2886). Принимает tile через параметр (был в A до JSR);
+ * STA Spr_TileIndex; LDX #$81; JSR Draw_WholeSpr */
+void draw_spr_in_column(uint8_t tile) {
+    /* STA Spr_TileIndex */
+    Spr_TileIndex = tile;
+    /* LDX #$81 — X-координата (центр столбца enemy-икон) */
+    Temp_X = 0x81u;
+    /* JSR Draw_WholeSpr */
     draw_whole_spr();
 }
 
-void draw_player_kill(uint8_t enemy_slot) {
-    Spr_Attrib = 0;
-
-    if (Tank_Type[enemy_slot] == 0) {
-        uint8_t y = Tank_Y[enemy_slot];
-        uint8_t x = Tank_X[enemy_slot];
-        Temp_X = x;
-        Temp_Y = y;
-        Spr_TileIndex = 0xF1;
-        TSA_Pal = 3;
-        draw_whole_spr();
-    } else {
-        uint8_t type = Tank_Type[enemy_slot];
-        uint8_t points_index = ((type >> 3) & 0x1F); // 0x10,0x14,0x18,0x1C
-        if (points_index >= 0x10) {
-            points_index -= 0x10;
-        }
-        Spr_TileIndex = (uint8_t)(0xB9 + (points_index & 0xFC));
-        TSA_Pal = 3;
-        Temp_Y = Tank_Y[enemy_slot];
-        Temp_X = Tank_X[enemy_slot];
-        draw_whole_spr();
-    }
-
-    Spr_Attrib = 0x20;
-}
-
+/* ASM: Draw_Tank_Column (2826) — рисует 4 enemy-иконки в столбец */
 void draw_tank_column(void) {
-    TSA_Pal = 2;
-
-    Temp_Y = 0x64;
-    Spr_TileIndex = 0x80;
-    draw_spr_in_column();
-
-    Temp_Y = 0x7C;
-    Spr_TileIndex = 0xA0;
-    draw_spr_in_column();
-
-    Temp_Y = 0x94;
-    Spr_TileIndex = 0xC0;
-    draw_spr_in_column();
-
-    Temp_Y = 0xAC;
-    Spr_TileIndex = 0xE0;
-    draw_spr_in_column();
+    /* LDA #2; STA TSA_Pal — спрайт-палитра 2 */
+    TSA_Pal = 2u;
+    /* LDY #$64; LDA #$80; JSR Draw_Spr_InColumn — 1-й тип */
+    Temp_Y = 0x64u;
+    draw_spr_in_column(0x80u);
+    /* LDY #$7C; LDA #$A0 — 2-й тип */
+    Temp_Y = 0x7Cu;
+    draw_spr_in_column(0xA0u);
+    /* LDY #$94; LDA #$C0 — 3-й тип */
+    Temp_Y = 0x94u;
+    draw_spr_in_column(0xC0u);
+    /* LDY #$AC; LDA #$E0 — 4-й тип */
+    Temp_Y = 0xACu;
+    draw_spr_in_column(0xE0u);
 }
 
+/* ASM: DrawTankColumn_XTimes (3069) — count раз вызывает NMI_Wait + Draw_Tank_Column */
 void draw_tank_column_x_times(uint8_t count) {
-    while (count != 0u) {
-        nmi_wait();
-        draw_tank_column();
-        count--;
-    }
+DrawTankColumn_XTimes:
+    /* JSR NMI_Wait */
+    nmi_wait();
+    /* TXA; PHA; JSR Draw_Tank_Column; PLA; TAX — count сохраняется через локальную переменную */
+    draw_tank_column();
+    /* DEX; BNE DrawTankColumn_XTimes */
+    count--;
+    if (count != 0u) goto DrawTankColumn_XTimes;
 }

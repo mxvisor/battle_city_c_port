@@ -32,15 +32,19 @@ void reinforce_to_ram(uint8_t icon_index) {
     string_to_screen_buffer(x, y, Reinforcement_Icons); //Compose	list of	remaining enemies
 }
 
+/* ASM: Draw_Reinforcemets (1645). Counter идёт 18,16,..0 (10 итераций),
+ * каждая итерация рисует одну строку (2 иконки) в стек резерва. */
 void draw_reinforcements(void) {
-    for (int counter = 18; counter >= 0; counter -= 2) {
-        reinforce_to_ram((uint8_t)counter);
-    }
+    Counter = 18u;
+at_:
+    reinforce_to_ram(Counter);
+    /* DEC Counter; DEC Counter — два декремента (две иконки в линии) */
+    Counter = (uint8_t)(Counter - 2u);
+    if ((int8_t)Counter >= 0) goto at_;
 }
 
 void draw_level_flag(void) {
-    // ASM: Draw_LevelFlag (1566)
-    PPU_Addr_Ptr = 0x1C;
+    /* ASM: Draw_LevelFlag (1566). */
     nmi_wait();
     string_to_screen_buffer(0x1D, 0x17, LevelFlag_Upper_Icons);
     string_to_screen_buffer(0x1D, 0x18, LevelFlag_Lower_Icons);
@@ -72,7 +76,6 @@ locret_C858:
 }
 
 void draw_player_lives(void) {
-    PPU_Addr_Ptr = 0x1C;
     Counter = 1;
     Tmp_CharIndexBase = Counter;
     Char_Index_Base = 0x6E;

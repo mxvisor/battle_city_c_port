@@ -71,21 +71,25 @@ void reset(void) {
     set_ppu();
 }
 
+/* ASM: StaffStr_Store — LDX #$F; @_: LDA StaffString,X; STA StaffString_RAM,X; DEX; BPL @_ */
 void staff_str_store(void) {
-    for (int i = 0; i < 16; i++) {
-        StaffString_RAM[i] = StaffString[i];
-    }
+    uint8_t x = 0x0Fu;
+at_:
+    StaffString_RAM[x] = StaffString[x];
+    x = (uint8_t)(x - 1u);
+    if ((int8_t)x >= 0) goto at_;
 }
 
+/* ASM: StaffStr_Check — LDX #$F; @_: ... BNE ColdBoot; DEX; BPL @_; LDA #1; RTS; ColdBoot: LDA #0; RTS */
 uint8_t staff_str_check(void) {
-    for (int i = 0; i < 16; i++) {
-        if (StaffString_RAM[i] != StaffString[i]) {
-            goto cold_boot;
-        }
-    }
-    return 1;
+    uint8_t x = 0x0Fu;
+at_:
+    if (StaffString_RAM[x] != StaffString[x]) goto ColdBoot;
+    x = (uint8_t)(x - 1u);
+    if ((int8_t)x >= 0) goto at_;
+    return 1u;
 
-cold_boot:
-    return 0;
+ColdBoot:
+    return 0u;
 }
 

@@ -9,7 +9,7 @@ atomic_int game_in_nmi_wait = 0;
 jmp_buf game_exit_buf;
 
 void nmi(void) {
-    // PHA, TXA, PHA, TYA, PHA, PHP handled by C prologue/epilogue
+      // PHA, TXA, PHA, TYA, PHA, PHP handled by C prologue/epilogue
 
     // LDA #0; STA PPU_SPR_ADDR
     // Initialization for writing to zero address SPR OAM
@@ -177,8 +177,20 @@ static const uint8_t LevelSelPalette[] = {
     0x0F, 0x29, 0x09, 0x00, 0x0F, 0x00, 0x10, 0x00,
 };
 
+/* ASM line 3441 — anonymous palette between LevelSelPalette and PaletteMisc1. */
+static const uint8_t PaletteFlash1[] = {
+    0x0F, 0x0F, 0x06, 0x00, 0x0F, 0x3C, 0x10, 0x00,
+    0x0F, 0x29, 0x09, 0x00, 0x0F, 0x00, 0x10, 0x00,
+};
+
 static const uint8_t PaletteMisc1[] = {
     0x0F, 0x12, 0x06, 0x00, 0x0F, 0x3C, 0x10, 0x00,
+    0x0F, 0x29, 0x09, 0x00, 0x0F, 0x00, 0x10, 0x00,
+};
+
+/* ASM line 3444 — anonymous palette between PaletteMisc1 and PaletteMisc2. */
+static const uint8_t PaletteFlash2[] = {
+    0x0F, 0x00, 0x06, 0x00, 0x0F, 0x3C, 0x10, 0x00,
     0x0F, 0x29, 0x09, 0x00, 0x0F, 0x00, 0x10, 0x00,
 };
 
@@ -188,13 +200,15 @@ static const uint8_t PaletteMisc2[] = {
 };
 
 static const uint8_t *const BkgPaletteTable[] = {
-    PaletteFrame2,
-    LevelPalette,
-    PaletteFrame1,
-    TitleScrPalette,
-    LevelSelPalette,
-    PaletteMisc1,
-    PaletteMisc2,
+    PaletteFrame2,      /* 0 */
+    LevelPalette,       /* 1 */
+    PaletteFrame1,      /* 2 */
+    TitleScrPalette,    /* 3 */
+    LevelSelPalette,    /* 4 */
+    PaletteFlash1,      /* 5 — hi-score flash */
+    PaletteMisc1,       /* 6 */
+    PaletteFlash2,      /* 7 — hi-score flash */
+    PaletteMisc2,       /* 8 */
 };
 
 // Spr_Pal_Load
