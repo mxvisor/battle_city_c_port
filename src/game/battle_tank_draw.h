@@ -21,4 +21,6 @@ void set_spr_index(uint8_t value);
 void operating_tank(uint8_t slot);
 /* ASM: Respawn (5491) */
 void respawn(uint8_t slot);
+/* ASM: Draw_Ricochet (5283) — fallthrough из Draw_Bullet_Ricochet. */
+void draw_ricochet(uint8_t tile_offset);
 #endif // BATTLE_TANK_DRAW_H

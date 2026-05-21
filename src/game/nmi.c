@@ -8,60 +8,47 @@
 atomic_int game_in_nmi_wait = 0;
 jmp_buf game_exit_buf;
 
+/* ASM: NMI (3176). Сервис-обработчик VBlank.
+ * В C-порту прерываний нет — функция вызывается render-потоком как «псевдо-NMI».
+ * PHA/TXA/PHA/TYA/PHA/PHP/PLP/PLA/TAY/PLA/TAX/PLA/RTI — обёртки регистров CPU,
+ * в C обрабатываются прологом/эпилогом функции. SPR_DMA пропущен (renderer
+ * читает SprBuffer напрямую, без OAM DMA). */
 void nmi(void) {
-      // PHA, TXA, PHA, TYA, PHA, PHP handled by C prologue/epilogue
+    /* LDA #0; STA PPU_SPR_ADDR / LDA #2; STA SPR_DMA — N/A в C-симе. */
 
-    // LDA #0; STA PPU_SPR_ADDR
-    // Initialization for writing to zero address SPR OAM
-    // In this port, we don't have a direct variable for this register yet.
-
-    // LDA #2; STA SPR_DMA
-    // Sprite buffer will be at address $200 (SprBuffer in globals)
-    
-    // LDA PPU_STATUS; Reset VBlank Occurance
+    /* LDA PPU_STATUS — сбрасывает VBlank-флаг */
     ppu_status_read();
-    
-    // JSR Update_Screen; Transfer from Screen_Buffer to PPU memory
+    /* JSR Update_Screen */
     update_screen();
 
-    // LDA BkgPal_Number
-    if (!(BkgPal_Number & 0x80)) {
-        // JSR Load_Bkg_Pal
-        load_bkg_pal();
-    }
+    /* LDA BkgPal_Number; BMI Skip_PalLoad */
+    if ((BkgPal_Number & 0x80u) != 0u) goto Skip_PalLoad;
+    /* JSR Load_Bkg_Pal */
+    load_bkg_pal();
 
-    // LDA PPU_REG1_Stts; ORA #$B0; STA PPU_CTRL_REG1
-    // bit 7=1 (NMI), bit 5=1 (Sprite 8x16), bit 4=1 (BG Table $1000)
-    PPU_CTRL_REG1 = PPU_REG1_Stts | 0xB0;
+Skip_PalLoad:
+    /* LDA PPU_REG1_Stts; ORA #$B0; STA PPU_CTRL_REG1
+     * bit 7=NMI, bit 5=Sprite 8x16, bit 4=BG Table $1000 */
+    PPU_CTRL_REG1 = (uint8_t)(PPU_REG1_Stts | 0xB0u);
 
-    // LDA #0; STA PPU_SCROLL_REG  (X scroll = 0)
-    // LDA Scroll_Byte; STA PPU_SCROLL_REG  (Y scroll)
-    // Render reads PPU_SCROLL_REG as Y scroll — must always sync.
+    /* LDA #0; STA PPU_SCROLL_REG (X) — пропущено: renderer использует только Y.
+     * LDA Scroll_Byte; STA PPU_SCROLL_REG (Y) */
     PPU_SCROLL_REG = Scroll_Byte;
 
-    // LDA #$1E; STA PPU_CTRL_REG2; Enable background and sprites
-    PPU_CTRL_REG2 = 0x1E;
+    /* LDA #$1E; STA PPU_CTRL_REG2 — enable bg+sprites */
+    PPU_CTRL_REG2 = 0x1Eu;
 
-    // JSR Read_Joypads
     read_joypads();
-
-    // JSR Spr_Invisible; Outputs sprite Y-coordinates to $F0
     spr_invisible();
-
-    // JSR Play_Sound; Similar to Play in NSF format
     play_sound();
 
-    // INC Frame_Counter
-    Frame_Counter++;
+    /* INC Frame_Counter; AND #63; BNE End_Interrupt; INC Seconds_Counter */
+    Frame_Counter = (uint8_t)(Frame_Counter + 1u);
+    if ((Frame_Counter & 63u) != 0u) goto End_Interrupt;
+    Seconds_Counter = (uint8_t)(Seconds_Counter + 1u);
 
-    // LDA Frame_Counter; AND #63; BNE End_Interrupt
-    if ((Frame_Counter & 63) == 0) {
-        // INC Seconds_Counter; 64 frames in one second?
-        Seconds_Counter++;
-    }
-
-    // End_Interrupt:
-    // PLP, PLA, TAY, PLA, TAX, PLA, RTI handled by C prologue/epilogue
+End_Interrupt:
+    return;
 }
 
 /* ASM: Read_Joypads (3571).
@@ -98,51 +85,67 @@ at__:
     goto at__;
 }
 
+/* ASM: NMI_Wait (4082). Busy-loop `CMP Frame_Counter; BEQ @_` ждёт смены
+ * Frame_Counter (т.е. срабатывания NMI). В C прерываний нет — game-поток
+ * сигнализирует render-потоку через atomic-флаг и спит на семафоре,
+ * который render-поток поднимает после очередного nmi()-кадра. */
 void nmi_wait(void) {
     atomic_store_explicit(&game_in_nmi_wait, 1, memory_order_release);
     plat_sem_wait(plat_get_wake_sem());
     atomic_store_explicit(&game_in_nmi_wait, 0, memory_order_release);
-    
+
+    /* longjmp в begin() при graceful shutdown — аналог "выхода из NMI-loop". */
     if (!plat_running) {
         longjmp(game_exit_buf, 1);
     }
 }
 
+/* ASM: VBlank_Wait (3449). Spin на бите 7 PPU_STATUS. В C-порту используем
+ * vblank-семафор от render-потока + atomic-чтение статуса PPU. */
 void vblank_wait(void) {
-    while (plat_running) {
-        if (ppu_status_read() & 0x80) {
-            break;
-        }
-        plat_sem_wait(plat_get_vblank_sem());
-    }
+at_: /* ASM: @_ */
+    if (!plat_running) goto exit_;
+    /* LDA PPU_STATUS; BPL @_ */
+    if ((ppu_status_read() & 0x80u) != 0u) goto exit_;
+    plat_sem_wait(plat_get_vblank_sem());
+    goto at_;
 
+exit_:
     if (!plat_running) {
         longjmp(game_exit_buf, 1);
     }
 }
 
+/* ASM: Update_Screen (4125). Бежит по Screen_Buffer, выгружая записи
+ * формата [hi, lo, data..., $FF] в PPU через ppu_data_write. */
 void update_screen(void) {
-    if (ScrBuffer_Pos == 0) return;
-
-    Screen_Buffer[ScrBuffer_Pos] = 0;
-    uint8_t x = 0;
-    uint16_t addr = 0;
+    /* LDX ScrBuffer_Pos; LDA #0; STA Screen_Buffer,X; TAX — терминатор + сброс X */
+    Screen_Buffer[ScrBuffer_Pos] = 0u;
+    uint8_t x = 0u;
+    uint16_t addr = 0u;
     uint8_t val;
 
 at_:
+    /* CPX ScrBuffer_Pos; BEQ Update_Screen_End */
     if (x == ScrBuffer_Pos) goto Update_Screen_End;
-    addr = ((uint16_t)Screen_Buffer[x++] << 8) | Screen_Buffer[x++];
+    /* LDA Screen_Buffer,X; INX; STA PPU_ADDRESS x2 — hi/lo адрес записи */
+    {
+        uint8_t hi = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
+        uint8_t lo = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
+        addr = (uint16_t)(((uint16_t)hi << 8) | lo);
+    }
 
 at__:
-    val = Screen_Buffer[x++];
-    if (val == 0xFF) goto at_;
-
-at___:
-    ppu_data_write(addr++, val);
+    /* LDA Screen_Buffer,X; INX; CMP #$FF; BNE @___ */
+    val = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
+    if (val == 0xFFu) goto at_;
+    /* STA PPU_DATA */
+    ppu_data_write(addr, val);
+    addr = (uint16_t)(addr + 1u);
     goto at__;
 
 Update_Screen_End:
-    ScrBuffer_Pos = 0;
+    ScrBuffer_Pos = 0u;
 }
 
 static const uint8_t SpritePalette[] = {

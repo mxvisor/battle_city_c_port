@@ -18,14 +18,16 @@
 #include "battle_tank_status.h"
 #include "title_screen.h"
 
+/* ASM: Draw_StageNumString (1977). Прямой набор тайлов "STAGE __" в Screen_Buffer
+ * + два разряда номера уровня через ByteTo_Num_String + Save_Str_To_ScrBuffer. */
 void draw_stage_num_string(void) {
     nmi_wait();
-    uint16_t addr = coord_to_ppu_address(0x0C, 0x0E);
-    
-    uint8_t x = ScrBuffer_Pos;
-    if (x >= 120) return;
+    /* LDX #$C; LDY #$E; JSR CoordTo_PPUaddress — A=hi, Y=lo */
+    uint16_t addr = coord_to_ppu_address(0x0Cu, 0x0Eu);
 
-    Screen_Buffer[x++] = (uint8_t)(addr >> 8) + PPU_Addr_Ptr;
+    uint8_t x = ScrBuffer_Pos;
+    /* CLC; ADC #$1C; STA Screen_Buffer,X */
+    Screen_Buffer[x++] = (uint8_t)((addr >> 8) + PPU_Addr_Ptr);
     Screen_Buffer[x++] = (uint8_t)addr;
     
     Screen_Buffer[x++] = 0x23;

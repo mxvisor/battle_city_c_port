@@ -9,7 +9,7 @@ static const uint8_t aHiscore[] = { 'H', 'I', 'S', 'C', 'O', 'R', 'E', 0xFF };
 
 /* ASM: Draw_RecordDigit (4165) — пропускает ведущие нули в HiScore_String,
  * прибавляя $20 к Block_X за каждый, затем вызывает Draw_BrickStr с остатком. */
-static void draw_record_digit(void) {
+void draw_record_digit(void) {
     Block_X = 0x10u;
     Block_Y = 0x64u;
     Char_Index_Base = 0x30u;

@@ -19,11 +19,13 @@ static const BulletFunc Bullet_Status_JumpTable[] = {
 
 
 
+/* ASM: AllBulletsStatus_Handle (5520). Обрабатывает 10 пуль (8 + 2 доп.) сверху вниз. */
 void all_bullets_status_handle(void) {
-    /* ASM: processes 10 bullets from index 9 down to 0 */
-    for (int8_t i = 9; i >= 0; i--) {
-        bullet_status_handle((uint8_t)i);
-    }
+    Counter = 9u;
+at_:
+    bullet_status_handle(Counter);
+    Counter = (uint8_t)(Counter - 1u);
+    if ((int8_t)Counter >= 0) goto at_;
 }
 
 void bullet_status_handle(uint8_t slot) {
@@ -37,33 +39,37 @@ void bullet_status_handle(uint8_t slot) {
     }
 }
 
+/* ASM: Make_Ricochet (5589). Считает кадры в младшем ниббле; на 0 — следующий
+ * кадр рикошета (старший ниббл −$10) с новым счётчиком $03. */
 void make_ricochet(uint8_t slot) {
-    /* ASM: Make_Ricochet (5589)
-       Decrements frame counter in low nibble; when zero, advances to
-       next ricochet frame (decrement upper nibble by 1) with 3 new frames. */
-    Bullet_Status[slot]--;
-    uint8_t status = Bullet_Status[slot];
-    if ((status & 0x0Fu) != 0u) {
-        return; /* BNE @exit — still counting down */
-    }
-    uint8_t upper = (uint8_t)((status & 0xF0u) - 0x10u); /* SEC SBC #$10 */
-    if (upper != 0u) {
-        upper |= 0x03u; /* ORA #3 — set 3-frame counter for new frame */
-    }
-    Bullet_Status[slot] = upper; /* BEQ @skip stores 0; else stores next frame */
+    /* DEC Bullet_Status,X */
+    Bullet_Status[slot] = (uint8_t)(Bullet_Status[slot] - 1u);
+    /* LDA Bullet_Status,X; AND #$F; BNE @exit */
+    uint8_t a = Bullet_Status[slot];
+    if ((a & 0x0Fu) != 0u) goto exit_;
+    /* LDA Bullet_Status,X; AND #$F0; SEC; SBC #$10; BEQ @skip */
+    a = (uint8_t)((a & 0xF0u) - 0x10u);
+    if (a == 0u) goto skip_;
+    /* ORA #3 */
+    a = (uint8_t)(a | 0x03u);
+
+skip_: /* ASM: @skip */
+    Bullet_Status[slot] = a;
+
+exit_: /* ASM: @exit */
+    return;
 }
 
+/* ASM: Bullet_Move (5563). Сдвигает пулю по направлению, дважды если flag speed. */
 void bullet_move(uint8_t slot) {
-    /* ASM: Bullet_Move (5553) */
+    /* LDA Bullet_Status,X; AND #3; TAY */
     uint8_t direction = (uint8_t)(Bullet_Status[slot] & 3u);
     change_bullet_coord(slot, direction);
-    if ((Bullet_Property[slot] & 0x01u) == 0u) {
-        goto End_Bullet_Move;
-    }
+    /* LDA Bullet_Property,X; AND #1; BEQ End_Bullet_Move */
+    if ((Bullet_Property[slot] & 0x01u) == 0u) goto End_Bullet_Move;
     change_bullet_coord(slot, direction);
 
 End_Bullet_Move:
-    /* ASM: End_Bullet_Move */
     return;
 }
 

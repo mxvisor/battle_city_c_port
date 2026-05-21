@@ -9,5 +9,7 @@ void null_both_hi_score(void);
 void draw_record_hi_score(void);
 /* ASM: Update_HiScore (4198) — возвращает Y: 0/1=1P record/$FF=2P record */
 uint8_t update_hi_score(void);
+/* ASM: Draw_RecordDigit (4165) */
+void draw_record_digit(void);
 
 #endif // HISCORE_H

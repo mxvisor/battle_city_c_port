@@ -4,8 +4,47 @@
 #include "game/ppu_registers.h"
 #include "game/bss.h"
 #include <stdbool.h>
+#include <string.h>
 
-static uint8_t vram[0x4000]; /* 16KB emulated PPU VRAM */
+static uint8_t vram[0x4000]; /* 16KB emulated PPU VRAM: $0000-$1FFF = CHR, $2000-$3EFF = NT, $3F00-$3FFF = palette */
+
+/* PPU $2006 latch state + $2007 read buffer (поведение реального NES). */
+static uint16_t ppu_addr;
+static uint8_t ppu_addr_latch; /* 0 = ожидаем high byte, 1 = ожидаем low */
+static uint8_t ppu_read_buf;
+
+void ppu_address_write(uint8_t val) {
+    if (ppu_addr_latch == 0u) {
+        ppu_addr = (uint16_t)(((uint16_t)val << 8) | (ppu_addr & 0x00FFu));
+        ppu_addr_latch = 1u;
+    } else {
+        ppu_addr = (uint16_t)((ppu_addr & 0xFF00u) | val);
+        ppu_addr_latch = 0u;
+    }
+}
+
+uint8_t ppu_data_read(void) {
+    uint16_t addr = (uint16_t)(ppu_addr & 0x3FFFu);
+    uint8_t result;
+    if (addr < 0x3F00u) {
+        /* Буферизованное чтение: возвращаем предыдущий буфер, заполняем новым. */
+        result = ppu_read_buf;
+        ppu_read_buf = vram[addr];
+    } else {
+        /* Палитра читается напрямую; буфер заполняется из зеркала NT. */
+        result = vram[addr];
+        ppu_read_buf = vram[addr - 0x1000u];
+    }
+    /* Auto-increment (PPU_CTRL_REG1 bit 2 = 0 → +1, =1 → +32). */
+    uint16_t inc = (PPU_CTRL_REG1 & 0x04u) ? 32u : 1u;
+    ppu_addr = (uint16_t)((ppu_addr + inc) & 0x3FFFu);
+    return result;
+}
+
+void ppu_load_chr(const uint8_t *data, size_t len) {
+    if (len > 0x2000u) len = 0x2000u;
+    memcpy(vram, data, len);
+}
 
 void ppu_sim_write(uint16_t addr, uint8_t val) {
     addr &= 0x3FFF;
@@ -38,7 +77,7 @@ uint8_t* ppu_get_vram_ptr(void) {
 void ppu_render(void *framebuffer) {
     uint32_t *fb = (uint32_t *)framebuffer;
     uint8_t *vram = ppu_get_vram_ptr();
-    uint8_t *chr = gets_chr_ptr();
+    uint8_t *chr = vram; /* CHR теперь живёт в vram[$0000-$1FFF] */
     bool show_bg = (PPU_CTRL_REG2 & 0x08) != 0;
     bool show_spr = (PPU_CTRL_REG2 & 0x10) != 0;
 

@@ -11,7 +11,7 @@
 
 static const uint8_t StaffString[48] = "RYOUITI OOKUBO  TAKEFUMI HYOUDOU" "JUNKO OZAWA     ";
 
-static void load_pals(void) {
+void load_pals(void) {
     vblank_wait();
     spr_pal_load();
     BkgPal_Number = 0;
@@ -61,13 +61,21 @@ hot_boot:
     Scroll_Byte = 0;
 }
 
+/* ASM: RESET (308). Точка входа после Power-On/Reset.
+ * SEI/CLD/TXS (stack init) — N/A в C; ASM-цикл Wait (двукратный PPU_STATUS poll
+ * с записью PPU_CTRL_REG2=$06 между) свёрнут — vblank_wait() уже вызывается
+ * внутри reset_screen_stuff (через load_pals) и set_ppu, что эквивалентно. */
 void reset(void) {
-    PPU_CTRL_REG1 = 0x10;
-    // PPU status wait loop skipping in C port
-    PPU_CTRL_REG2 = 0x06;
+    /* LDA #$10; STA PPU_CTRL_REG1 — BG=second CHR generator */
+    PPU_CTRL_REG1 = 0x10u;
+    /* LDA #$06; STA PPU_CTRL_REG2 — BG/sprites disabled (записывается в ASM-Wait-loop) */
+    PPU_CTRL_REG2 = 0x06u;
+
     reset_screen_stuff();
-    Scroll_Byte = 0;
-    PPU_REG1_Stts = 0;
+    /* LDA #0; STA Scroll_Byte; STA PPU_REG1_Stts */
+    Scroll_Byte = 0u;
+    PPU_REG1_Stts = 0u;
+    /* JSR Set_PPU */
     set_ppu();
 }
 

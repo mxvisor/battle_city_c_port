@@ -11,4 +11,7 @@ void load_demo_level(void);
  *             1 — Button_Pressed (ASM `JMP Title_Loaded` → `goto title_loaded` в caller). */
 int bonus_level_button_check(void);
 
+/* ASM: Demo_AI — простая AI для demo-уровня. */
+void demo_ai(void);
+
 #endif // DEMO_LEVEL_H

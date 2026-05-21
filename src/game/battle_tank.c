@@ -6,41 +6,36 @@
 #include "coords.h"
 
 
-uint8_t detect_motion(uint8_t slot) {
-    uint8_t button_state = slot == 0 ? Joypad1_Buttons : Joypad2_Buttons;
+/* ASM: Detect_Motion (4603). Возвращает 1 если игрок жмёт направление и tank жив. */
+uint8_t detect_motion(uint8_t x) {
+    uint8_t buttons = (x == 0u) ? Joypad1_Buttons : Joypad2_Buttons;
+    /* LDA Joypad1_Buttons,X; AND #$F0; BEQ End_Detect_Motion */
+    if ((buttons & 0xF0u) == 0u) goto End_Detect_Motion;
+    /* LDA Tank_Status,X; BEQ End_Detect_Motion */
+    if (Tank_Status[x] == 0u) goto End_Detect_Motion;
+    return 1u;
 
-    if ((button_state & 0xF0u) == 0u) {
-        return 0;
-    }
-
-    if (Tank_Status[slot] == 0) {
-        return 0;
-    }
-
-    return 1;
+End_Detect_Motion:
+    return 0u;
 }
+
+/* ASM: Check_BorderReach (1690). Зажимает Tank_X/Y в диапазон [$18..$D8]. */
 void check_border_reach(uint8_t slot) {
-    uint8_t x = Tank_X[slot];
-    if (x >= 0xD8u) {
-        x = 0xD8u; /* If right of frame, assign tank rightmost coordinate */
-    }
-
-    if (x < 0x18u) {
-        x = 0x18u; /* If left of frame, assign tank leftmost coordinate */
-    }
-
-    Tank_X[slot] = x;
-
-    uint8_t y = Tank_Y[slot];
-    if (y >= 0xD8u) {
-        y = 0xD8u; /* If above frame, assign tank topmost coordinate */
-    }
-
-    if (y < 0x18u) {
-        y = 0x18u; /* If below frame, assign tank bottommost coordinate */
-    }
-
-    Tank_Y[slot] = y;
+    /* LDA Tank_X; CMP #$D8; BCC @_; LDA #$D8; STA Tank_X */
+    if (Tank_X[slot] < 0xD8u) goto at_;
+    Tank_X[slot] = 0xD8u;
+at_:
+    /* CMP #$18; BCS @__ */
+    if (Tank_X[slot] >= 0x18u) goto at__;
+    Tank_X[slot] = 0x18u;
+at__:
+    if (Tank_Y[slot] < 0xD8u) goto at___;
+    Tank_Y[slot] = 0xD8u;
+at___:
+    if (Tank_Y[slot] >= 0x18u) goto End_Check_BorderReach;
+    Tank_Y[slot] = 0x18u;
+End_Check_BorderReach:
+    return;
 }
 
 void ice_detect(uint8_t slot) {
@@ -102,32 +97,30 @@ loop: /* ASM: @loop */
     goto next_Tank;
 }
 
-void invisible_timer_handle(uint8_t player_slot) {
-    (void)player_slot;
+/* ASM: Invisible_Timer_Handle (6091). Для 2 игроков: если есть таймер силового
+ * поля — раз в 64 кадра уменьшает его и рисует анимацию (2 фрейма). */
+void invisible_timer_handle(uint8_t unused) {
+    (void)unused;
     Counter = 1u;
-    goto itm_loop;
 
-itm_next:
-    if (Counter-- != 0u) {
-        goto itm_loop;
-    }
-    return;
+loop_: /* ASM: @loop */
+    /* LDA Invisible_Timer,X; BEQ @next */
+    if (Invisible_Timer[Counter] == 0u) goto next_Invisible_Timer_Handle;
+    /* LDA Frame_Counter; AND #63; BNE @_ */
+    if ((Frame_Counter & 63u) != 0u) goto at_;
+    Invisible_Timer[Counter] = (uint8_t)(Invisible_Timer[Counter] - 1u);
 
-itm_loop:
-    {
-        if (Invisible_Timer[Counter] == 0u) {
-            goto itm_next;
-        }
-        if ((Frame_Counter & 63u) == 0u) {
-            Invisible_Timer[Counter]--;
-        }
-        TSA_Pal = 2u;
-        Temp_X = Tank_X[Counter];
-        Temp_Y = Tank_Y[Counter];
-        Spr_TileIndex = (uint8_t)(((Frame_Counter & 2u) << 1u) + 0x29u);
-        draw_whole_spr();
-    }
-    goto itm_next;
+at_: /* ASM: @_ */
+    TSA_Pal = 2u;
+    Temp_X = Tank_X[Counter];
+    Temp_Y = Tank_Y[Counter];
+    /* LDA Frame_Counter; AND #2; ASL A; CLC; ADC #$29 */
+    Spr_TileIndex = (uint8_t)(((Frame_Counter & 2u) << 1u) + 0x29u);
+    draw_whole_spr();
+
+next_Invisible_Timer_Handle: /* ASM: @next_Invisible_Timer_Handle */
+    Counter = (uint8_t)(Counter - 1u);
+    if ((int8_t)Counter >= 0) goto loop_;
 }
 
 void ice_move(uint8_t slot) {
@@ -176,6 +169,7 @@ at___: /* ASM: @___ */
         if ((int8_t)dir < 0) {
             goto usual_Tank;
         }
+        goto iceStatus;
 
 iceStatus: /* ASM: @iceStatus */
         {
@@ -250,6 +244,7 @@ Skip_TimerOps:
         }
         goto JumpToStatusHandle;
     }
+    goto Enemy;
 
 Enemy:
     if (EnemyFreeze_Timer == 0u) {
@@ -288,13 +283,16 @@ Motion_Handle_Next:
     return;
 }
 
+/* ASM: Null_Status (6331). LDA #0; LDX #7; @_: STA Tank_Status,X; STA Player_Ice_Status,X; DEX; BPL @_ */
 void null_status(void) {
-    /* ASM: STA Tank_Status,X / STA Player_Ice_Status,X / DEX / BPL — X=7..0 */
-    for (int i = 0; i < 8; i++) {
-        Tank_Status[i] = 0;
-    }
-    Player_Ice_Status[0] = 0;
-    Player_Ice_Status[1] = 0;
+    uint8_t x = 7u;
+at_:
+    Tank_Status[x] = 0u;
+    /* ASM пишет STA Player_Ice_Status,X — в C-порту массив всего из 2 элементов;
+     * для x>=2 запись игнорируется (несуществующие индексы) */
+    if (x < 2u) Player_Ice_Status[x] = 0u;
+    x = (uint8_t)(x - 1u);
+    if ((int8_t)x >= 0) goto at_;
 }
 
 void rise_tank_status_bit(uint8_t slot) {

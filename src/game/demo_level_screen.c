@@ -71,7 +71,7 @@ void load_demo_level(void) {
 }
 
 /* ASM: Demo_AI (1187). Все внутренние ASM-метки сохранены. */
-static void demo_ai(void) {
+void demo_ai(void) {
     uint8_t demo_status = 0u;
     uint8_t status;
     uint8_t button;

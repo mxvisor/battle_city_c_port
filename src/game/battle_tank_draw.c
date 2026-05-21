@@ -32,11 +32,13 @@ static const TankFunc TankDraw_JumpTable[] = {
 
 
 /* ASM: TanksStatus_Handle (5215) — обрабатывает 8 танков */
+/* ASM: TanksStatus_Handle (5215). Обрабатывает 8 танков по индексу 0..7. */
 void tanks_status_handle(void) {
-    /* LDA #0; STA Counter; @_: LDX Counter; JSR SingleTankStatus_Handle; INC Counter; CMP #8; BNE @_ */
-    for (Counter = 0u; Counter < 8u; Counter++) {
-        single_tank_status_handle(Counter);
-    }
+    Counter = 0u;
+at_:
+    single_tank_status_handle(Counter);
+    Counter = (uint8_t)(Counter + 1u);
+    if (Counter != 8u) goto at_;
 }
 
 /* ASM: SingleTankStatus_Handle (5233) — диспетч по высоким битам Tank_Status */
@@ -55,7 +57,7 @@ static const uint8_t TankType_Pal[8] = {2, 0, 0, 1, 2, 1, 2, 2};
 
 /* ASM: Draw_Ricochet (5283) — fallthrough-точка из Draw_Bullet_Ricochet.
  * CLC; ADC #$F1; STA Spr_TileIndex; LDA #3; STA TSA_Pal; JSR Draw_WholeSpr */
-static void draw_ricochet(uint8_t tile_offset) {
+void draw_ricochet(uint8_t tile_offset) {
     Spr_TileIndex = (uint8_t)(tile_offset + 0xF1u);
     TSA_Pal = 3u;
     draw_whole_spr();

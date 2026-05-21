@@ -8,7 +8,7 @@ A port of the original **Battle City** (NES, 1985) to C. Source code is a precis
 
 ## Project Status
 
-**114** out of **218** functions verified (see `PORTING.md`).
+**218** out of **218** functions verified (see `PORTING.md`).
 
 ## Build
 
@@ -67,7 +67,7 @@ Alternatively, CHR can be loaded from disk files. Two formats are supported:
 | File | Description |
 |---|---|
 | `data/chr.bin` | Binary CHR-ROM (16 KB). Must be extracted from the original ROM yourself (e.g., via `dd` or a NES emulator) |
-| `data/chr.bmp` | BMP image 128×256 (512 tiles 8×8), 8-bit grayscale. Top 128×128 — sprite bank (tiles 0–255), bottom 128×128 — background bank (tiles 256–511). Each pixel is converted to NES 2bpp by intensity |
+| `data/chr.bmp` | BMP image 128×256 (512 tiles 8×8), 4-bit indexed (16 colors, 4 used). Top 128×128 — sprite bank (tiles 0–255), bottom 128×128 — background bank (tiles 256–511). Pixel values 0–3 map directly to NES 2bpp bits |
 
 Load order: `chr.bin` → `chr.bmp` → embedded BMP.
 
@@ -76,7 +76,7 @@ Load order: `chr.bin` → `chr.bmp` → embedded BMP.
 ```
 ├── CMakeLists.txt
 ├── data/
-│   └── chr.bmp              # BMP tiles 128×256 (alternative to .bin)
+│   └── chr.bmp              # BMP tiles 128×256, 4-bit indexed (alternative to .bin)
 ├── src/
 │   ├── main.c               # entry point, argument parsing
 │   ├── sdl_init.c/h         # SDL2 init: window, audio, semaphores

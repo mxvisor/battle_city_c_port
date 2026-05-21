@@ -54,20 +54,23 @@ End_GameOver_Str_Move:
     return;
 }
 
+/* ASM: Init_Level_VARs (666). Fallthrough-цель из Null_both_HiScore. */
 void init_level_vars(void) {
-    Player_Type[0] = 0;
-    Player_Type[1] = 0;
-    AddLife_Flag[0] = 0;
-    AddLife_Flag[1] = 0;
-    EnterGame_Flag = 0;
-    Player1_Lives = 3;
-    Player2_Lives = 3;
-    EnemyRespawn_PlaceIndex = 3;
-    if (CursorPos == 0) {
-        Player2_Lives = 0;
-    }
-    Level_Number = 1;
-    Level_Mode = 0;
+    Player_Type[0] = 0u;
+    Player_Type[1] = 0u;
+    AddLife_Flag[0] = 0u;
+    AddLife_Flag[1] = 0u;
+    EnterGame_Flag = 0u;
+    Player1_Lives = 3u;
+    Player2_Lives = 3u;
+    EnemyRespawn_PlaceIndex = 3u;
+    /* LDA CursorPos; BNE @_ — пропускаем обнуление Player2_Lives если есть 2й игрок */
+    if (CursorPos != 0u) goto at_;
+    Player2_Lives = 0u;
+
+at_:
+    Level_Number = 1u;
+    Level_Mode = 0u;
 }
 
 
@@ -122,17 +125,21 @@ End_Play_Snd_Move:
 }
 
 
+/* ASM: Swap_Pal_Colors (721). Каждые 64 кадра меняет BkgPal: на 0 → 2, на $20 → 1. */
 void swap_pal_colors(void) {
-    uint8_t frame = Frame_Counter & 0x3F;
+    uint8_t a = (uint8_t)(Frame_Counter & 0x3Fu);
+    /* LDA Frame_Counter; AND #$3F; BEQ @switch */
+    if (a == 0u) goto switch_;
+    /* CMP #$20; BNE @exit */
+    if (a != 0x20u) goto exit_;
+    BkgPal_Number = 1u;
+    return;
 
-    if (frame == 0x20) {
-        BkgPal_Number = 1;
-        return;
-    }
+switch_: /* ASM: @switch */
+    BkgPal_Number = 2u;
 
-    if (frame == 0) {
-        BkgPal_Number = 2;
-    }
+exit_: /* ASM: @exit */
+    return;
 }
 
 void setup_level_vars(void) {
@@ -141,15 +148,13 @@ void setup_level_vars(void) {
     GameOverStr_Y = 0xF0;
     GameOverStr_Timer = 0;
 
-    if (Player1_Lives == 0) {
-        goto Player1_Skip;
-    }
+    /* LDA Player1_Lives; BEQ @_ */
+    if (Player1_Lives == 0u) goto at_;
     make_respawn(0);
-Player1_Skip:
 
-    if (Player2_Lives == 0) {
-        goto Set_VARs;
-    }
+at_:
+    /* LDA Player2_Lives; BEQ Set_VARs */
+    if (Player2_Lives == 0u) goto Set_VARs;
     make_respawn(1);
 
 Set_VARs:
@@ -180,24 +185,26 @@ Set_VARs:
     Snd_Engine = 1;
     EnterGame_Flag = 1;
 
-    if (Level_Mode == 1) {
-        Temp = 35;
-        goto Respawn_Delay_Calc;
-    }
+    /* LDA Level_Mode; CMP #1; BNE @__ */
+    if (Level_Mode != 1u) goto at__;
+    /* LDA #35; JMP Respawn_Delay_Calc */
+    Temp = 35u;
+    goto Respawn_Delay_Calc;
 
+at__:
     Temp = Level_Number;
 
-/* ASM: Respawn_Delay_Calc (798) */    
 Respawn_Delay_Calc:
-    Temp = Temp << 1;
-    Temp = Temp << 1;
-    Respawn_Delay = 190 - Temp;
+    /* ASL A; ASL A; STA Temp; LDA #190; SEC; SBC Temp; STA Respawn_Delay */
+    Temp = (uint8_t)(Temp << 2u);
+    Respawn_Delay = (uint8_t)(190u - Temp);
+    /* LDA CursorPos; BEQ @exit */
+    if (CursorPos == 0u) goto exit_;
+    /* LDA Respawn_Delay; SEC; SBC #20; STA Respawn_Delay */
+    Respawn_Delay = (uint8_t)(Respawn_Delay - 20u);
 
-    if (CursorPos == 0) {
-        return;
-    }
-
-    Respawn_Delay -= 20;
+exit_:
+    return;
 }
 
 void null_killed_enms_count(void) {

@@ -1,5 +1,5 @@
 #include "draw.h"
-#include "nes/chr_load.h"
+#include "nes/ppu_sim.h"
 #include "zeropage.h"
 #include "bss.h"
 #include <string.h>
@@ -96,101 +96,136 @@ void draw_ptr_tile(void) {
     (void)Temp;
     draw_tile();
 }
+/* ASM: Inc_Ptr_on_A (3847). CLC; ADC LowPtr_Byte; STA LowPtr_Byte; BCC @_; INC HighPtr_Byte. */
 void inc_ptr_on_a(uint8_t a) {
-    uint16_t ptr = LowPtr_Byte | (HighPtr_Byte << 8);
-    ptr += a;
-    LowPtr_Byte = ptr & 0xFF;
-    HighPtr_Byte = ptr >> 8;
+    uint16_t sum = (uint16_t)LowPtr_Byte + (uint16_t)a;
+    LowPtr_Byte = (uint8_t)sum;
+    if ((sum & 0x100u) == 0u) goto at_;
+    HighPtr_Byte = (uint8_t)(HighPtr_Byte + 1u);
+at_:
+    return;
 }
 
+/* ASM: Draw_Char (4026). Читает 8 байт CHR-графики из второго CHR-генератора
+ * через регистры PPU_ADDRESS/PPU_DATA, складывает в стек (PHA), затем
+ * выводит 8x8 битмап в NT_Buffer по 4-пиксельной сетке. */
 void draw_char(uint8_t char_index) {
-    BrickChar_X = Block_X;
-    BrickChar_Y = Block_Y + 0x20;
+    uint8_t pha_stack[8];
+    uint8_t pha_sp;
 
-    LowPtr_Byte = 0;
-    HighPtr_Byte = get_bg_bank_offset() >> 8;
+    /* STX BrickChar_X; TAX (char_index in X); TYA; CLC ADC #$20; STA BrickChar_Y */
+    BrickChar_X = Block_X;
+    BrickChar_Y = (uint8_t)(Block_Y + 0x20u);
+
+    /* LDA #0; STA LowPtr_Byte; LDA #$10; STA HighPtr_Byte — указатель на bg-bank ($1000). */
+    LowPtr_Byte = 0u;
+    HighPtr_Byte = 0x10u;
 
     uint8_t x = char_index;
 Add_10:
+    /* DEX; BMI @_ — пока X >= 0, Ptr += $10 */
     x = (uint8_t)(x - 1u);
     if ((int8_t)x < 0) goto at_;
     inc_ptr_on_a(0x10u);
     goto Add_10;
 
 at_:
-    {
-        uint8_t *chr = gets_chr_ptr();
-        uint16_t chr_addr = LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8);
-        uint8_t pattern[8];
-        for (uint8_t i = 0; i < 8u; i++) pattern[i] = chr[chr_addr + i];
-        /* ASM: 8 PHA pushes via PPU_DATA read loop — эмулируем как стек через pattern[]. */
-        Counter = 8u;
+    /* LDA HighPtr_Byte; STA PPU_ADDRESS; LDA LowPtr_Byte; STA PPU_ADDRESS */
+    ppu_address_write(HighPtr_Byte);
+    ppu_address_write(LowPtr_Byte);
+    /* LDA PPU_DATA — first PPU read is 'illegal' (буфер); сбрасываем результат. */
+    (void)ppu_data_read();
+    /* LDA #8; STA Counter */
+    Counter = 8u;
+    pha_sp = 0u;
 
-    NextByte:
-        Counter--;
-        CHR_Byte = pattern[Counter];
-        Mask_CHR_Byte = 0x80u;
+Read_CHRByte:
+    /* LDA PPU_DATA; PHA */
+    pha_stack[pha_sp++] = ppu_data_read();
+    /* DEC Counter; BNE Read_CHRByte */
+    Counter--;
+    if (Counter != 0u) goto Read_CHRByte;
 
-    Next_Bit:
-        get_spr_coord_in_tiles(BrickChar_X, BrickChar_Y);
-        temp_coord_shl();
-        if ((CHR_Byte & Mask_CHR_Byte) == 0u) goto Empty_Pixel;
-        nt_buffer_process_or(0);
-        goto pixelProcessed;
+    /* LDA #8; STA Counter — для второго цикла */
+    Counter = 8u;
 
-    Empty_Pixel:
-        nt_buffer_process_xor(0);
+NextByte:
+    /* PLA — LIFO: последний PHA выходит первым */
+    Counter--;
+    CHR_Byte = pha_stack[--pha_sp];
+    Mask_CHR_Byte = 0x80u;
 
-    pixelProcessed:
-        BrickChar_X = (uint8_t)(BrickChar_X + 4u);
-        Mask_CHR_Byte = (uint8_t)(Mask_CHR_Byte >> 1u);
-        if (Mask_CHR_Byte != 0u) goto Next_Bit;
-        BrickChar_X = (uint8_t)(BrickChar_X - 0x20u);
-        BrickChar_Y = (uint8_t)(BrickChar_Y - 4u);
-        if (Counter != 0u) goto NextByte;
-    }
+Next_Bit:
+    /* LDX BrickChar_X; LDY BrickChar_Y; JSR Get_SprCoord_InTiles */
+    get_spr_coord_in_tiles(BrickChar_X, BrickChar_Y);
+    temp_coord_shl();
+    /* LDA CHR_Byte; AND Mask_CHR_Byte; BEQ Empty_Pixel */
+    if ((CHR_Byte & Mask_CHR_Byte) == 0u) goto Empty_Pixel;
+    nt_buffer_process_or(0);
+    goto pixelProcessed;
+
+Empty_Pixel:
+    nt_buffer_process_xor(0);
+
+pixelProcessed:
+    BrickChar_X = (uint8_t)(BrickChar_X + 4u);
+    /* LSR Mask_CHR_Byte; BCC Next_Bit — пока бит не «выпал» из Mask */
+    Mask_CHR_Byte = (uint8_t)(Mask_CHR_Byte >> 1u);
+    if (Mask_CHR_Byte != 0u) goto Next_Bit;
+    BrickChar_X = (uint8_t)(BrickChar_X - 0x20u);
+    BrickChar_Y = (uint8_t)(BrickChar_Y - 4u);
+    if (Counter != 0u) goto NextByte;
 }
 
+/* ASM: SaveSprTo_SprBuffer (4375). Кладёт один 8x16 спрайт в SprBuffer,
+ * проверяет тайл NT по адресу (x+3, y) — если $22 (лес), OR-ит Spr_Attrib в TSA_Pal. */
 void save_spr_to_spr_buffer(uint8_t x, uint8_t y) {
-    if (SprBuffer_Position >= 252) return;
-
-    /* TXA; STA Spr_X — Spr_X = raw input X */
+    /* TXA; STA Spr_X */
     Spr_X = x;
-    /* CLC; ADC #3; TAX — CPU X_reg ← x+3 (для GetCoord_InTiles) */
-    /* TYA; SEC; SBC #8; STA Spr_Y — Spr_Y = y - 8 (display offset) */
+    /* CLC; ADC #3; TAX — CPU X_reg ← x+3 */
+    /* TYA; SEC; SBC #8; STA Spr_Y */
     Spr_Y = (uint8_t)(y - 8u);
-    /* JSR GetCoord_InTiles (direct, ASM @4367) — X_reg=(x+3), Y_reg=y (исходный) */
+    /* JSR GetCoord_InTiles — X_reg=(x+3), Y_reg=y */
     get_coord_in_tiles_xy((uint8_t)(x + 3u), y);
 
+    /* LDA (LowPtr_Byte),Y; CMP #$22; BNE Skip_Attrib */
     uint8_t tile = NT_Buffer[(LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8)) & 0x3FFu];
-    if (tile == 0x22u) {
-        TSA_Pal = (uint8_t)(TSA_Pal | Spr_Attrib); /* LDA TSA_Pal; ORA Spr_Attrib; STA TSA_Pal */
-        goto Skip_Attrib;
-    }
+    if (tile != 0x22u) goto Skip_Attrib;
+    /* LDA TSA_Pal; ORA Spr_Attrib; STA TSA_Pal */
+    TSA_Pal = (uint8_t)(TSA_Pal | Spr_Attrib);
 
 Skip_Attrib:
+    /* LDX SprBuffer_Position; ... STA SprBuffer,X / +1 / +2 / +3 */
     SprBuffer[SprBuffer_Position + 0u] = Spr_Y;
     SprBuffer[SprBuffer_Position + 1u] = Spr_TileIndex;
     SprBuffer[SprBuffer_Position + 2u] = TSA_Pal;
     SprBuffer[SprBuffer_Position + 3u] = Spr_X;
+    /* TXA; CLC; ADC Gap; STA SprBuffer_Position */
     SprBuffer_Position = (uint8_t)(SprBuffer_Position + Gap);
 }
 
-void indexed_save_spr(uint8_t direction, uint8_t x, uint8_t y) {
-    Spr_TileIndex += (direction & 0x03) * 2;
-    save_spr_to_spr_buffer(x - 5, y);
+/* ASM: Indexed_SaveSpr (4396). A*=2; A+=Spr_TileIndex; X-=5; SaveSprTo_SprBuffer. */
+void indexed_save_spr(uint8_t a, uint8_t x, uint8_t y) {
+    Spr_TileIndex = (uint8_t)(Spr_TileIndex + (uint8_t)(a << 1u));
+    save_spr_to_spr_buffer((uint8_t)(x - 5u), y);
 }
 
-void spr_tile_index_add(uint8_t direction) {
-    Spr_TileIndex += (direction & 0x03) * 8;
+/* ASM: Spr_TileIndex_Add (4413). A<<=3; Spr_TileIndex += A. (fallthrough RTS) */
+void spr_tile_index_add(uint8_t a) {
+    Spr_TileIndex = (uint8_t)(Spr_TileIndex + (uint8_t)(a << 3u));
 }
 
+/* ASM: Draw_WholeSpr (4426). Рисует 16x16 как два 8x16: левый (x-8), inc tile by 2, правый (x). */
 void draw_whole_spr(void) {
+    /* STX Temp_X; STY Temp_Y — в C-порту Temp_X/Y уже заданы caller'ом */
     uint8_t tx = Temp_X;
     uint8_t ty = Temp_Y;
-    
-    save_spr_to_spr_buffer(tx - 8, ty);
-    Spr_TileIndex += 2; // Interleaved format: skip bottom-left tile to get top-right
+
+    /* TXA; SEC; SBC #8; TAX; JSR SaveSprTo_SprBuffer */
+    save_spr_to_spr_buffer((uint8_t)(tx - 8u), ty);
+    /* INC Spr_TileIndex; INC Spr_TileIndex — interleaved 8x16 */
+    Spr_TileIndex = (uint8_t)(Spr_TileIndex + 2u);
+    /* LDX Temp_X; LDY Temp_Y; JSR SaveSprTo_SprBuffer */
     save_spr_to_spr_buffer(tx, ty);
 }
 
@@ -217,24 +252,30 @@ EOS:
     return;
 }
 
+/* ASM: NT_Buffer_Process_XOR (3764). Если верхние биты тайла нулевые,
+ * стирает Temp-маскированные биты. */
 void nt_buffer_process_xor(uint8_t value) {
-    /* ASM: NT_Buffer_Process_XOR — uses (LowPtr_Byte),Y: clear Temp bits from tile.
-     * C port: LowPtr/HighPtr already set by get_spr_coord_in_tiles. */
-    uint16_t offset = LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8);
-    uint8_t tile = NT_Buffer[offset % 1024];
-    if ((tile & 0xF0) == 0) {
-        NT_Buffer[offset % 1024] = tile & (uint8_t)~Temp;
-    }
+    (void)value; /* arg не используется — ASM читает Temp */
+    uint16_t offset = (uint16_t)(LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8));
+    uint8_t tile = NT_Buffer[offset & 0x3FFu];
+    /* LDA (LowPtr_Byte),Y; AND #$F0; BNE @_ */
+    if ((tile & 0xF0u) != 0u) goto at_;
+    /* LDA Temp; EOR #$FF; AND (LowPtr_Byte),Y; STA (LowPtr_Byte),Y */
+    NT_Buffer[offset & 0x3FFu] = (uint8_t)(tile & (uint8_t)~Temp);
+at_:
+    return;
 }
 
+/* ASM: NT_Buffer_Process_OR (3791). Если верхние биты тайла нулевые,
+ * выставляет Temp-маскированные биты. */
 void nt_buffer_process_or(uint8_t value) {
-    /* ASM: NT_Buffer_Process_OR — uses (LowPtr_Byte),Y: set Temp bits in tile.
-     * C port: LowPtr/HighPtr already set by get_spr_coord_in_tiles. */
-    uint16_t offset = LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8);
-    uint8_t tile = NT_Buffer[offset % 1024];
-    if ((tile & 0xF0) == 0) {
-        NT_Buffer[offset % 1024] = tile | Temp;
-    }
+    (void)value;
+    uint16_t offset = (uint16_t)(LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8));
+    uint8_t tile = NT_Buffer[offset & 0x3FFu];
+    if ((tile & 0xF0u) != 0u) goto at__;
+    NT_Buffer[offset & 0x3FFu] = (uint8_t)(tile | Temp);
+at__:
+    return;
 }
 void fill_nt_buffer(uint8_t value) {
     memset(NT_Buffer, value, 1024);
@@ -243,14 +284,14 @@ void fill_nt_buffer(uint8_t value) {
 void fill_nt_attrib_buffer(uint8_t value) {
     memset(&NT_Buffer[0x3C0], value, 64);
 }
+/* ASM: Null_Upper_NT (2933). Очищает upper NT и палитру 3. */
 void null_upper_nt(void) {
     screen_off();
-    BkgPal_Number = 3;
-    PPU_Addr_Ptr = 0x20; // Correct NT0 address base
+    BkgPal_Number = 3u;
+    PPU_Addr_Ptr = 0x1Cu; /* ASM: LDA #$1C */
     null_nt_buffer();
     store_nt_buffer_in_vram();
-    // Ensure palette is updated before we start complex drawing or scrolling
-    nmi_wait(); 
+    set_ppu();
 }
 void null_nt_buffer(void) {
     memset(NT_Buffer, 0, 1024);
@@ -273,40 +314,55 @@ void clear_nt(void) {
     store_nt_buffer_in_vram();
     set_ppu();
 }
+/* ASM: FillScr_Single_Row (2242). Кладёт 32-байтовую строку (Iterative_Byte
+ * или содержимое NT_Buffer) в Screen_Buffer с PPU-адресом строки. */
 void fill_scr_single_row(uint8_t row) {
-    uint16_t addr = coord_to_ppu_address(0, row);
-    HighPtr_Byte = addr >> 8;
-    LowPtr_Byte = addr & 0xFF;
-    
-    uint8_t x = ScrBuffer_Pos;
-    if (x > 128 - 35) return; // Prevention
+    /* LDX #0; JSR CoordTo_PPUaddress — X=0, Y=row → A=hi, Y=lo PPU-адреса */
+    uint16_t addr = coord_to_ppu_address(0u, row);
+    HighPtr_Byte = (uint8_t)(addr >> 8);
+    LowPtr_Byte = (uint8_t)addr;
 
-    Screen_Buffer[x++] = HighPtr_Byte + PPU_Addr_Ptr;
+    uint8_t x = ScrBuffer_Pos;
+    Screen_Buffer[x++] = (uint8_t)(HighPtr_Byte + PPU_Addr_Ptr);
     Screen_Buffer[x++] = LowPtr_Byte;
-    
-    for (int y = 0; y < 0x20; y++) {
-        if (Iterative_Byte != 0) {
-            Screen_Buffer[x++] = Iterative_Byte;
-        } else {
-            uint16_t nt_offset = (uint16_t)row * 32 + y;
-            Screen_Buffer[x++] = NT_Buffer[nt_offset % 1024];
-        }
+
+    uint8_t y = 0u;
+at_:
+    /* LDA Iterative_Byte; BNE @__; LDA (LowPtr_Byte),Y */
+    {
+        uint8_t a = Iterative_Byte;
+        if (a != 0u) goto at__;
+        a = NT_Buffer[((LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8)) + y) & 0x3FFu];
+at__:
+        Screen_Buffer[x++] = a;
     }
-    
-    Screen_Buffer[x++] = 0xFF;
+    y++;
+    if (y != 0x20u) goto at_;
+
+    Screen_Buffer[x++] = 0xFFu;
     ScrBuffer_Pos = x;
 }
 
+/* ASM: Copy_AttribToScrnBuff (2206). Кладёт 64 байта attribute-таблицы в
+ * Screen_Buffer ПО-ОДНОМУ за NMI-кадр (через Inc_Ptr_on_A), а не пачкой. */
 void copy_attrib_to_scrn_buff(void) {
-    uint8_t x = ScrBuffer_Pos;
-    uint16_t addr = 0x23C0;
-    Screen_Buffer[x++] = (uint8_t)(addr >> 8);  /* ASM: no ADC #$1C here */
-    Screen_Buffer[x++] = (uint8_t)addr;
-    for (int i = 0; i < 64; i++) {
-        Screen_Buffer[x++] = NT_Buffer[0x3C0 + i];
+    uint8_t y = 0u;
+    HighPtr_Byte = 0x23u;
+    LowPtr_Byte = 0xC0u; /* PPU $23C0 — attribute-таблица NT0 */
+
+at_:
+    nmi_wait();
+    {
+        uint8_t x = ScrBuffer_Pos;
+        Screen_Buffer[x++] = HighPtr_Byte;
+        Screen_Buffer[x++] = LowPtr_Byte;
+        Screen_Buffer[x++] = NT_Buffer[0x3C0u + y];
+        y++;
+        Screen_Buffer[x++] = 0xFFu;
+        ScrBuffer_Pos = x;
     }
-    Screen_Buffer[x++] = 0xFF;
-    ScrBuffer_Pos = x;
+    inc_ptr_on_a(1u);
+    if (y != 0x40u) goto at_;
 }
 
 uint8_t or_pal(uint8_t a) {
@@ -362,25 +418,28 @@ End_TSA_Pal_Ops:
     return attr_index;
 }
 
+/* ASM: FillNT_with_Grey (2280). Сходящиеся вертикальные «шторы» серым тайлом. */
 void fill_nt_with_grey(void) {
-    Iterative_Byte = 0x11;
-    Block_Y = 0;
-    while (Block_Y < 0x10) {
-        nmi_wait();
-        fill_scr_single_row(Block_Y);
-        fill_scr_single_row(0x1D - Block_Y);
-        Block_Y++;
-    }
+    Iterative_Byte = 0x11u;
+    Block_Y = 0u;
+at_:
+    nmi_wait();
+    fill_scr_single_row(Block_Y);
+    fill_scr_single_row((uint8_t)(0x1Du - Block_Y));
+    Block_Y = (uint8_t)(Block_Y + 1u);
+    if (Block_Y != 0x10u) goto at_;
 }
+
+/* ASM: FillNT_with_Black (2306). Расходящиеся «шторы» чёрным от центра. */
 void fill_nt_with_black(void) {
-    Iterative_Byte = 0;
-    Block_Y = 0xF;
-    while (Block_Y != 0xFF) {
-        nmi_wait();
-        fill_scr_single_row(Block_Y);
-        fill_scr_single_row(0x1D - Block_Y);
-        Block_Y--;
-    }
+    Iterative_Byte = 0u;
+    Block_Y = 0x0Fu;
+at_:
+    nmi_wait();
+    fill_scr_single_row(Block_Y);
+    fill_scr_single_row((uint8_t)(0x1Du - Block_Y));
+    Block_Y = (uint8_t)(Block_Y - 1u);
+    if (Block_Y != 0xFFu) goto at_;
 }
 void draw_black_row(void) {
     uint16_t addr = LowPtr_Byte | (HighPtr_Byte << 8);
@@ -389,19 +448,27 @@ void draw_black_row(void) {
     }
 }
 
+/* ASM: Draw_GrayFrame (3906). Заливает весь NT серым тайлом $11, attribute=0,
+ * затем рисует чёрное игровое поле строками от Block_X/Block_Y, Counter строк. */
 void draw_gray_frame(void) {
-    fill_nt_buffer(0x11);
-    fill_nt_attrib_buffer(0);
-    
+    fill_nt_buffer(0x11u);       /* ASM: LDX #0; @Fill_NTBuffer: STA NT_Buffer,X / +$100 / +$200 / +$300; INX; BNE */
+    fill_nt_attrib_buffer(0u);   /* ASM: LDX #$C0; @Fill_NTAttribBuffer: STA NT_Buffer+$300,X; INX; BNE */
+
+    /* LDX Block_X; LDY Block_Y; JSR CoordTo_PPUaddress; STA HighPtr_Byte; STY LowPtr_Byte */
     uint16_t addr = coord_to_ppu_address(Block_X, Block_Y);
-    LowPtr_Byte = addr & 0xFF;
-    HighPtr_Byte = addr >> 8;
-    
-    while (Counter > 0) {
-        draw_black_row();
-        inc_ptr_on_a(0x20);
-        Counter--;
-    }
+    HighPtr_Byte = (uint8_t)(addr >> 8);
+    LowPtr_Byte = (uint8_t)addr;
+
+Draw_BlackRow:
+    draw_black_row();
+    Counter = (uint8_t)(Counter - 1u);
+    if (Counter == 0u) goto at_;
+    /* LDA #$20; JSR Inc_Ptr_on_A */
+    inc_ptr_on_a(0x20u);
+    goto Draw_BlackRow;
+
+at_: /* ASM: @_ */
+    return;
 }
 
 void make_gray_frame(void) {
@@ -592,15 +659,32 @@ void byte_to_num_string(uint8_t value) {
     Num_String[6] = value;
 }
 
+/* ASM: Zero_Page_Viewer (1395). Debug-утилита, не вызывается из игры.
+ * В C-порту нет настоящей zero-page RAM, поэтому второй вывод стабильно "00". */
 void zero_page_viewer(void) {
-    /* ASM: Zero_Page_Viewer (1395) - debug utility */
+    /* LDA ZeroPage_Offset; JSR Num_To_NumString */
     num_to_num_string(ZeroPage_Offset);
     Char_Index_Base = 0x30u;
     save_str_to_scr_buffer(9u, 2u, Num_String + 4u);
-    num_to_num_string(0u);   /* no real zero-page RAM in C port */
+    /* LDX ZeroPage_Offset; LDA 0,X — чтение zero-page; в C-порту = 0 */
+    num_to_num_string(0u);
     Char_Index_Base = 0u;
     save_str_to_scr_buffer(0x0Du, 2u, Num_String + 4u);
-    if ((Joypad1_Differ & 4u) != 0u) ZeroPage_Offset++;
-    if ((Joypad1_Differ & 2u) != 0u) ZeroPage_Offset--;
-    if ((Joypad1_Differ & 1u) != 0u) ZeroPage_Offset = (uint8_t)(ZeroPage_Offset + 0x10u);
+
+    /* LDA Joypad1_Differ; AND #4; BEQ SkipInc */
+    if ((Joypad1_Differ & 4u) == 0u) goto SkipInc_Zero_Page_Viewer;
+    ZeroPage_Offset = (uint8_t)(ZeroPage_Offset + 1u);
+
+SkipInc_Zero_Page_Viewer:
+    /* LDA Joypad1_Differ; AND #2; BEQ ScipDec */
+    if ((Joypad1_Differ & 2u) == 0u) goto ScipDec_Zero_Page_Viewer;
+    ZeroPage_Offset = (uint8_t)(ZeroPage_Offset - 1u);
+
+ScipDec_Zero_Page_Viewer:
+    /* LDA Joypad1_Differ; AND #1; BEQ End */
+    if ((Joypad1_Differ & 1u) == 0u) goto End_Zero_Page_Viewer;
+    ZeroPage_Offset = (uint8_t)(ZeroPage_Offset + 0x10u);
+
+End_Zero_Page_Viewer:
+    return;
 }

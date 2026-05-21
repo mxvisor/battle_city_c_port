@@ -2,6 +2,7 @@
 #include "nes/config.h"
 #include "nes/apu_sim.h"
 #include "game/nmi.h"
+#include "version.h"
 #include <stdio.h>
 
 
@@ -88,9 +89,9 @@ int sdl_init(unsigned scale) {
     int h = NES_SCREEN_H * scale;
 
 #ifdef USE_SDL3
-    window = SDL_CreateWindow("Battle City C", w, h, 0);
+    window = SDL_CreateWindow("Battle City C " BATTLE_CITY_VERSION, w, h, 0);
 #else
-    window = SDL_CreateWindow("Battle City C",
+    window = SDL_CreateWindow("Battle City C " BATTLE_CITY_VERSION,
                               SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED,
                               w, h,

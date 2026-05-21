@@ -19,84 +19,121 @@ void change_bullet_coord(uint8_t slot, uint8_t direction) {
 }
 
 
+/* ASM: Hide_All_Bullets (6315). Обнуляет Bullet_Status[0..9]. */
 void hide_all_bullets(void) {
-    /* ASM: Hide_All_Bullets (6301) */
-    for (int8_t i = 9; i >= 0; i--) {
-        Bullet_Status[(uint8_t)i] = 0u;
+    uint8_t x = 9u;
+at_:
+    Bullet_Status[x] = 0u;
+    x = (uint8_t)(x - 1u);
+    if ((int8_t)x >= 0) goto at_;
+}
+
+/* ASM: Make_Shot (5612). Если Bullet_Status == 0, выпускает новую пулю
+ * с направлением из Tank_Status и стартовой позицией Tank+8*direction.
+ * Свойства зависят от Tank_Type. */
+void make_shot(uint8_t x) {
+    /* LDA Bullet_Status,X; BNE @exit */
+    if (Bullet_Status[x] != 0u) goto exit_;
+    /* CPX #2; BCS @skip */
+    if (x >= 2u) goto skip_;
+    Snd_Shoot = 1u;
+
+skip_: /* ASM: @skip */
+    {
+        /* LDA Tank_Status,X; AND #3; TAY; ORA #$40; STA Bullet_Status,X */
+        uint8_t dir = (uint8_t)(Tank_Status[x] & 3u);
+        Bullet_Status[x] = (uint8_t)(dir | 0x40u);
+        /* LDA Bullet_Coord_X_Increment_1,Y; ASL; ASL; ASL; ADC Tank_X,X */
+        Bullet_X[x] = (uint8_t)(Tank_X[x] + (int8_t)(Bullet_Coord_X_Increment_1[dir] * 8));
+        Bullet_Y[x] = (uint8_t)(Tank_Y[x] + (int8_t)(Bullet_Coord_Y_Increment_1[dir] * 8));
+        Bullet_Property[x] = 0u;
+        /* LDA Tank_Type,X; AND #$F0; BEQ @exit */
+        uint8_t type_hi = (uint8_t)(Tank_Type[x] & 0xF0u);
+        if (type_hi == 0u) goto exit_;
+        /* CMP #$C0; BEQ @quickBullet_End_Make_Shot */
+        if (type_hi == 0xC0u) goto quickBullet_End_Make_Shot;
+        /* CMP #$60; BEQ @lastType */
+        if (type_hi == 0x60u) goto lastType;
+        /* AND #$80; BNE @exit */
+        if ((type_hi & 0x80u) != 0u) goto exit_;
     }
-}
 
-void make_shot(uint8_t slot) {
-    /* ASM: Make_Shot (5612) */
-    if (Bullet_Status[slot] != 0u) { return; }
-    if (slot < 2u) { Snd_Shoot = 1u; }
-    uint8_t dir = Tank_Status[slot] & 3u;
-    Bullet_Status[slot] = (uint8_t)(dir | 0x40u);
-    Bullet_X[slot] = (uint8_t)(Tank_X[slot] + (int8_t)(Bullet_Coord_X_Increment_1[dir] * 8));
-    Bullet_Y[slot] = (uint8_t)(Tank_Y[slot] + (int8_t)(Bullet_Coord_Y_Increment_1[dir] * 8));
-    Bullet_Property[slot] = 0u;
-
-    uint8_t type_hi = Tank_Type[slot] & 0xF0u;
-    if (type_hi == 0u)    { return; }
-    if (type_hi == 0xC0u) { Bullet_Property[slot] = 1u; return; }
-    if (type_hi == 0x60u) { Bullet_Property[slot] = 3u; return; }
-    if ((type_hi & 0x80u) != 0u) { return; }
-    Bullet_Property[slot] = 1u;
-}
-
-void make_player_shot(uint8_t player_slot) {
-    /* ASM: Make_Player_Shot (5738) */
-    (void)player_slot;
-    Counter = 1u;
-    goto mps_loop;
-
-mps_next:
-    if (Counter-- != 0u) { goto mps_loop; }
+quickBullet_End_Make_Shot: /* ASM: @quickBullet_End_Make_Shot */
+    Bullet_Property[x] = 1u;
     return;
 
-mps_loop:
+lastType: /* ASM: @lastType */
+    Bullet_Property[x] = 3u;
+
+exit_: /* ASM: @exit */
+    return;
+}
+
+/* ASM: Make_Player_Shot (5738). Проходит 2 игрока, если нажат огонь и пуля
+ * не активна — стреляет. Бонусный танк (Tank_Type & $C0 == $40) может выпустить
+ * вторую пулю в +8 слот. */
+void make_player_shot(uint8_t unused) {
+    (void)unused;
+    Counter = 1u;
+
+loop_: /* ASM: @loop */
     {
         uint8_t i = Counter;
-        uint8_t status = Tank_Status[i];
-        if ((int8_t)status >= 0)  { goto mps_next; }
-        if (status >= 0xE0u)      { goto mps_next; }
-        uint8_t joypad = (i == 0u) ? Joypad1_Differ : Joypad2_Differ;
-        if ((joypad & 0x03u) == 0u) { goto mps_next; }
-        if ((Tank_Type[i] & 0xC0u) == 0x40u) {
-            if (Bullet_Status[i] != 0u) {
-                if (Bullet_Status[i + 8u] != 0u) { goto mps_next; }
-                Bullet_Status[i + 8u]   = Bullet_Status[i];
-                Bullet_X[i + 8u]        = Bullet_X[i];
-                Bullet_Y[i + 8u]        = Bullet_Y[i];
-                Bullet_Property[i + 8u] = Bullet_Property[i];
-                Bullet_Status[i] = 0u;
-            }
+        /* LDA Tank_Status,X; BPL @next_Jump_Make_Shot */
+        if ((int8_t)Tank_Status[i] >= 0) goto next_Jump_Make_Shot;
+        /* CMP #$E0; BCS @next_Jump_Make_Shot */
+        if (Tank_Status[i] >= 0xE0u) goto next_Jump_Make_Shot;
+        /* LDA Joypad1_Differ,X; AND #3; BEQ @next_Jump_Make_Shot */
+        {
+            uint8_t joypad = (i == 0u) ? Joypad1_Differ : Joypad2_Differ;
+            if ((joypad & 0x03u) == 0u) goto next_Jump_Make_Shot;
         }
+        /* LDA Tank_Type,X; AND #$C0; CMP #$40; BNE @__ */
+        if ((Tank_Type[i] & 0xC0u) != 0x40u) goto at__;
+        /* LDA Bullet_Status,X; BEQ @__ */
+        if (Bullet_Status[i] == 0u) goto at__;
+        /* LDA Bullet_Status+8,X; BNE @next_Jump_Make_Shot */
+        if (Bullet_Status[i + 8u] != 0u) goto next_Jump_Make_Shot;
+        /* Копируем в +8 слот, обнуляем основной */
+        Bullet_Status[i + 8u]   = Bullet_Status[i];
+        Bullet_X[i + 8u]        = Bullet_X[i];
+        Bullet_Y[i + 8u]        = Bullet_Y[i];
+        Bullet_Property[i + 8u] = Bullet_Property[i];
+        Bullet_Status[i] = 0u;
+
+at__: /* ASM: @__ */
         make_shot(i);
     }
-    goto mps_next;
+
+next_Jump_Make_Shot: /* ASM: @next_Jump_Make_Shot */
+    Counter = (uint8_t)(Counter - 1u);
+    if ((int8_t)Counter >= 0) goto loop_;
 }
 
-void make_enemy_shot(uint8_t enemy_slot) {
-    /* ASM: Make_Enemy_Shot (5785) */
-    (void)enemy_slot;
-    if (EnemyFreeze_Timer != 0u) { return; }
-    uint8_t slot = 7u;
-    goto mes_loop;
+/* ASM: Make_Enemy_Shot (5785). Если EnemyFreeze_Timer==0, для каждого враждебного
+ * танка (X=7..2): с вероятностью 1/32 (random & $1F == 0) выпускает пулю. */
+void make_enemy_shot(uint8_t unused) {
+    (void)unused;
+    /* LDA EnemyFreeze_Timer; BNE @exit */
+    if (EnemyFreeze_Timer != 0u) goto exit_;
+    uint8_t x = 7u;
 
-mes_next:
-    slot--;
-    if (slot != 1u) { goto mes_loop; }
+loop_: /* ASM: @loop */
+    /* LDA Tank_Status,X; BPL @next_Make_Enemy_Shot */
+    if ((int8_t)Tank_Status[x] >= 0) goto next_Make_Enemy_Shot;
+    /* CMP #$E0; BCS @next_Make_Enemy_Shot */
+    if (Tank_Status[x] >= 0xE0u) goto next_Make_Enemy_Shot;
+    /* JSR Get_Random_A; AND #$1F; BNE @next */
+    if ((get_random_a() & 0x1Fu) != 0u) goto next_Make_Enemy_Shot;
+    make_shot(x);
+
+next_Make_Enemy_Shot: /* ASM: @next_Make_Enemy_Shot */
+    x = (uint8_t)(x - 1u);
+    /* CPX #1; BNE @loop */
+    if (x != 1u) goto loop_;
+
+exit_: /* ASM: @exit */
     return;
-
-mes_loop:
-    {
-        uint8_t status = Tank_Status[slot];
-        if ((int8_t)status >= 0)  { goto mes_next; }
-        if (status >= 0xE0u)      { goto mes_next; }
-        if ((get_random_a() & 0x1Fu) == 0u) { make_shot(slot); }
-    }
-    goto mes_next;
 }
 
 
@@ -117,11 +154,10 @@ loop: /* ASM: @loop */
         goto next_Bullet_Fly_Handle;
     }
 
-    if (Bullet_Property[slot] == 0u) {
-        if ((((uint8_t)(slot ^ Frame_Counter)) & 1u) == 0u) {
-            goto next_Bullet_Fly_Handle;
-        }
-    }
+    /* LDA Bullet_Property,X; BNE @__ */
+    if (Bullet_Property[slot] != 0u) goto at__;
+    /* TXA; EOR Frame_Counter; AND #1; BEQ @next_Bullet_Fly_Handle */
+    if ((((uint8_t)(slot ^ Frame_Counter)) & 1u) == 0u) goto next_Bullet_Fly_Handle;
 
 at__: /* ASM: @__ */
     dir = status & 3u;

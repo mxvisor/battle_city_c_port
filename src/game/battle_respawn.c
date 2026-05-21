@@ -47,103 +47,116 @@ static const uint8_t Y_Player_Respawn[2] = { 0xD8, 0xD8 };
 static const uint8_t X_Enemy_Respawn[3] = { 0x18, 0x78, 0xD8 };
 static const uint8_t Y_Enemy_Respawn[3] = { 0x18, 0x18, 0x18 };
 
-void respawn_handle(uint8_t slot) {
-    if (Respawn_Timer != 0) {
-        Respawn_Timer -= 1;
-        return;
-    }
+/* ASM: Respawn_Handle (6155). Запускает респаун следующего врага из резерва. */
+void respawn_handle(uint8_t unused) {
+    (void)unused;
+    /* LDA Respawn_Timer; BEQ @_ */
+    if (Respawn_Timer == 0u) goto at_;
+    /* DEC Respawn_Timer; RTS */
+    Respawn_Timer = (uint8_t)(Respawn_Timer - 1u);
+    return;
 
-    if (Enemy_Reinforce_Count == 0) {
-        goto End_Respawn_Handle;
-    }
-
+at_: /* ASM: @_ */
+    /* LDA Enemy_Reinforce_Count; BEQ End_Respawn_Handle */
+    if (Enemy_Reinforce_Count == 0u) goto End_Respawn_Handle;
     Counter = TanksOnScreen;
 
 nextPlayer:
-    {
-        uint8_t idx = Counter;
-        if (Tank_Status[idx] == 0) {
-            Respawn_Timer = Respawn_Delay;
-            make_respawn(idx);
-            Enemy_Reinforce_Count -= 1;
-            draw_empty_tile();
-            return;
-        }
-    }
+    /* LDX Counter; LDA Tank_Status,X; BNE __ */
+    if (Tank_Status[Counter] != 0u) goto at__;
+    Respawn_Timer = Respawn_Delay;
+    make_respawn(Counter);
+    Enemy_Reinforce_Count = (uint8_t)(Enemy_Reinforce_Count - 1u);
+    draw_empty_tile();
+    return;
 
-    Counter -= 1;
-    if (Counter != 1) {
-        goto nextPlayer;
-    }
+at__: /* ASM: __ */
+    Counter = (uint8_t)(Counter - 1u);
+    if (Counter != 1u) goto nextPlayer;
 
 End_Respawn_Handle:
     return;
 }
 
-/* ASM: Make_Respawn (6185) */
-void make_respawn(uint8_t slot) {
-    Tank_Type[slot] = 0;
-    if (slot >= 2) {
-        goto Enemy_Operations;
-    }
+/* ASM: Make_Respawn (6221). Инициализирует Tank_X/Y/Status для нового танка
+ * (игрока или врага), с возможностью бонусного танка при Reinforce_Count==3/10/17. */
+void make_respawn(uint8_t x) {
+    Tank_Type[x] = 0u;
+    /* CPX #2; BCS Enemy_Operations */
+    if (x >= 2u) goto Enemy_Operations;
+    /* Игрок */
+    Tank_X[x] = X_Player_Respawn[x];
+    Tank_Y[x] = Y_Player_Respawn[x];
+    Player_Blink_Timer[x] = 0u;
+    goto exit_;
 
-    Tank_X[slot] = X_Player_Respawn[slot];
-    Tank_Y[slot] = Y_Player_Respawn[slot];
-    Player_Blink_Timer[slot] = 0;
-    goto exit_make_respawn;
-
-/* ASM: Enemy_Operations (6199) */    
 Enemy_Operations:
-    EnemyRespawn_PlaceIndex++;
-    uint8_t place_index = EnemyRespawn_PlaceIndex;
-    if (place_index == 3) {
-        EnemyRespawn_PlaceIndex = 0;
-        place_index = 0;
-    }
+    /* INC EnemyRespawn_PlaceIndex; LDY EnemyRespawn_PlaceIndex; CPY #3; BNE @_ */
+    EnemyRespawn_PlaceIndex = (uint8_t)(EnemyRespawn_PlaceIndex + 1u);
+    if (EnemyRespawn_PlaceIndex != 3u) goto at_;
+    EnemyRespawn_PlaceIndex = 0u;
 
-    Tank_X[slot] = X_Enemy_Respawn[place_index];
-    Tank_Y[slot] = Y_Enemy_Respawn[place_index];
+at_: /* ASM: @_ */
+    Tank_X[x] = X_Enemy_Respawn[EnemyRespawn_PlaceIndex];
+    Tank_Y[x] = Y_Enemy_Respawn[EnemyRespawn_PlaceIndex];
+    /* CMP #3 / #10 / #17 */
+    if (Enemy_Reinforce_Count == 3u)  goto Make_BonusEnemy;
+    if (Enemy_Reinforce_Count == 10u) goto Make_BonusEnemy;
+    if (Enemy_Reinforce_Count != 17u) goto exit_;
 
-    if (Enemy_Reinforce_Count == 3 || Enemy_Reinforce_Count == 10 || Enemy_Reinforce_Count == 17) {
-        goto Make_BonusEnemy;
-    }
-    goto exit_make_respawn;
-
-/* ASM: Make_BonusEnemy (6221) */    
 Make_BonusEnemy:
-    Tank_Type[slot] = 4;
-    Bonus_X = 0;
+    Tank_Type[x] = 4u;
+    Bonus_X = 0u;
 
-exit_make_respawn:
-    Tank_Status[slot] = 0xF0;
-    Block_Y = Tank_Y[slot];
-    Block_X = Tank_X[slot];
-    draw_tsa_block(0x0F);
+exit_:
+    Tank_Status[x] = 0xF0u;
+    Block_Y = Tank_Y[x];
+    Block_X = Tank_X[x];
+    draw_tsa_block(0x0Fu);
 }
 
 const uint8_t Respawn_Status[8] = { 0xA0, 0xA0, 0xA2, 0xA2, 0xA2, 0xA2, 0xA2, 0xA2 };
 
+/* ASM: EnemyType_ROMArray (6477). 35 levels x 4 enemy types.
+ * C-порт раньше имел только 20 строк (+ строки 16-20 содержали
+ * данные не из своих позиций), что приводило к зависанию/некорректным
+ * врагам на уровнях 21+ (особенно уровень 28, где 15 врагов типа 3). */
 const uint8_t EnemyType_ROMArray[35 * 4] = {
-    0x80, 0xA0, 0xC0, 0xE0,
-    0xE0, 0xA0, 0xC0, 0x80,
-    0x80, 0xA0, 0xC0, 0xE0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0xC0, 0xE0, 0x80, 0xA0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0x80, 0xA0, 0xC0, 0x80,
-    0xC0, 0xE0, 0xA0, 0x80,
-    0x80, 0xA0, 0xC0, 0xE0,
-    0x80, 0xA0, 0xC0, 0xE0,
-    0xA0, 0xE0, 0xC0, 0xA0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0x80, 0xC0, 0xA0, 0xE0,
-    0xC0, 0xA0, 0xE0, 0xC0,
-    0xE0, 0x80, 0xC0, 0xA0,
-    0xA0, 0xE0, 0xC0, 0xA0,
-    0xC0, 0xA0, 0x80, 0xE0,
-    0xC0, 0xA0, 0x80, 0xE0,
+    0x80, 0xA0, 0xC0, 0xE0,  /* 1  */
+    0xE0, 0xA0, 0xC0, 0x80,  /* 2  */
+    0x80, 0xA0, 0xC0, 0xE0,  /* 3  */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 4  */
+    0xC0, 0xE0, 0x80, 0xA0,  /* 5  */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 6  */
+    0x80, 0xA0, 0xC0, 0x80,  /* 7  */
+    0xC0, 0xE0, 0xA0, 0x80,  /* 8  */
+    0x80, 0xA0, 0xC0, 0xE0,  /* 9  */
+    0x80, 0xA0, 0xC0, 0xE0,  /* 10 */
+    0xA0, 0xE0, 0xC0, 0xA0,  /* 11 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 12 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 13 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 14 */
+    0x80, 0xC0, 0xA0, 0xE0,  /* 15 */
+    0x80, 0xC0, 0xA0, 0xE0,  /* 16 */
+    0xE0, 0xA0, 0xC0, 0x80,  /* 17 */
+    0xE0, 0x80, 0xC0, 0xA0,  /* 18 */
+    0xA0, 0xE0, 0x80, 0xC0,  /* 19 */
+    0xA0, 0x80, 0xC0, 0xE0,  /* 20 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 21 */
+    0xA0, 0x80, 0xC0, 0xE0,  /* 22 */
+    0xE0, 0x80, 0xC0, 0xA0,  /* 23 */
+    0xC0, 0xE0, 0xA0, 0x80,  /* 24 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 25 */
+    0xA0, 0xE0, 0x80, 0xC0,  /* 26 */
+    0xC0, 0xE0, 0xA0, 0x80,  /* 27 */
+    0xA0, 0xE0, 0x80, 0xC0,  /* 28 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 29 */
+    0x80, 0xA0, 0xC0, 0xE0,  /* 30 */
+    0xC0, 0xA0, 0xE0, 0xC0,  /* 31 */
+    0xE0, 0x80, 0xC0, 0xA0,  /* 32 */
+    0xA0, 0xE0, 0xC0, 0xA0,  /* 33 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 34 */
+    0xC0, 0xA0, 0x80, 0xE0,  /* 35 (and Demo-level) */
 };
 
 /* ASM: Load_New_Tank (???) */

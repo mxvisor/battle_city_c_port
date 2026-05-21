@@ -39,6 +39,27 @@ file(WRITE ${CMAKE_BINARY_DIR}/chr_bmp.c
     "const unsigned int chr_bmp_len = sizeof(chr_bmp_data);\n"
 )
 
+# Generate version header from git
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --always --dirty
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+else()
+    set(GIT_VERSION "unknown")
+endif()
+
+file(WRITE ${CMAKE_BINARY_DIR}/version.h
+    "#ifndef VERSION_H\n"
+    "#define VERSION_H\n"
+    "#define BATTLE_CITY_VERSION \"${GIT_VERSION}\"\n"
+    "#endif\n"
+)
+
 file(GLOB SOURCES "src/*.c")
 file(GLOB NES_SOURCES "src/nes/*.c")
 file(GLOB GAME_SOURCES "src/game/*.c")
@@ -51,5 +72,6 @@ target_include_directories(battle_city PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/game
     ${CMAKE_SOURCE_DIR}/src/nes
+    ${CMAKE_BINARY_DIR}
     ${SDL_INCLUDE_DIRS}
 )

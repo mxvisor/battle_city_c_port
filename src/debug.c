@@ -39,15 +39,15 @@ void debug(void) {
     /* HISCORE path (Game Over shows automatically along the way):
      *   1) wait so title is fully drawn,
      *   2) press START to abort scroll_title_scrn() animation,
-     *   3) wait, press START to pick 1P → start_stage_sel_scrn(),
+     *   3) wait, press START to pick 2P → start_stage_sel_scrn(),
      *   4) wait, press START to launch the level,
      *   5) every frame after that, pin lives=0 and HQ destroyed so
      *      level_end_check() fires Game Over on the first battle tick,
      *      and pin 1P score > HiScore_String so hi-score entry triggers. */
     if (started < 3) {
         if (kick-- > 0) return;
-        CursorPos      = 0;
-        Joypad1_Differ = 8;   /* 1: abort scroll, 2: pick 1P, 3: start level */
+        CursorPos      = 1;
+        Joypad1_Differ = 8;   /* 1: abort scroll, 2: pick 2P, 3: start level */
         kick = (started == 1) ? 60 : 10;
         started++;
         return;
