@@ -617,6 +617,10 @@ at___:
     ScrBuffer_Pos = pos;
 }
 
+/* C-порт хелпер (НЕ ASM-функция). В ASM caller отдельно вызывает
+ * PtrToNonzeroStrElem (которая advance X через INX) + Save_Str_To_ScrBuffer.
+ * В C нет CPU X-регистра, поэтому собираем оба вызова: новый col = col + skip,
+ * где skip = (p - base_str) эмулирует приращение X в ASM. */
 void save_aligned_str_to_scr_buffer(uint8_t col, uint8_t row, uint8_t *base_str) {
     if (!base_str) return;
     uint8_t *p = ptr_to_nonzero_str_elem(base_str);
@@ -624,13 +628,37 @@ void save_aligned_str_to_scr_buffer(uint8_t col, uint8_t row, uint8_t *base_str)
     save_str_to_scr_buffer((uint8_t)(col + skip), row, p);
 }
 
+/* ASM: PtrToNonzeroStrElem (4135). Скиппит ведущие нули, продвигая Y (указатель
+ * на строку) синхронно с X (display-колонкой). Когда упирается в $FF-терминатор
+ * (вся строка состоит из нулей), откатывается назад, чтобы показать «фоновые»
+ * нули: на 2 байта при Tmp_CharIndexBase==0 («00» для HiScore=0 на title-экране)
+ * или на 1 байт при Tmp_CharIndexBase!=0 («0» для жизней игрока / номера уровня).
+ *
+ * ASM-метки сохранены как goto-targets per AGENTS.md §2.1. */
 uint8_t* ptr_to_nonzero_str_elem(uint8_t *str) {
     if (!str) return NULL;
-    // Skip leading zeroes, but keep at least one digit.
-    // Only the 0xFF terminator stops the scan.
-    while (*str == 0 && *(str + 1) != 0xFF) {
-        str++;
-    }
+
+PtrToNonzeroStrElem:
+    /* LDA 0,Y; BNE @_ — если не ноль, нашли цифру */
+    if (*str != 0u) goto at_;
+    /* INY; INX; JMP PtrToNonzeroStrElem */
+    str++;
+    goto PtrToNonzeroStrElem;
+
+at_: /* ASM: @_ */
+    /* CMP #$FF; BNE @___ — реальная цифра (не терминатор) — выйти */
+    if (*str != 0xFFu) goto at___;
+    /* LDA Tmp_CharIndexBase; BNE @__ */
+    if (Tmp_CharIndexBase != 0u) goto at__;
+    /* DEX; DEY — первый откат (только при Tmp==0) */
+    str--;
+
+at__: /* ASM: @__ */
+    /* DEX; DEY — второй откат (всегда, fallthrough) */
+    str--;
+
+at___: /* ASM: @___ */
+    /* LDA #0; STA HighPtr_Byte; STY LowPtr_Byte — в C возвращаем указатель */
     return str;
 }
 void null_8bytes_string(uint8_t *str) {
@@ -639,30 +667,44 @@ void null_8bytes_string(uint8_t *str) {
     str[7] = 0xFF;
 }
 
-/* ASM: Num_To_NumString (4291) */
-/* ASM: Num_To_NumString (4291).
- * Value is treated as a packed pair of BCD digits (high nibble, low nibble):
- *   value=$10 → "10", value=$25 → "25", etc.  Special case: value==0
- *   stores '1' at Num_String[3] to render "1000" (the bonus points payload).
- */
+/* ASM: Num_To_NumString (4291). Value трактуется как packed BCD пара (hi/lo nibble):
+ *   value=$10 → "10", value=$25 → "25". Спецслучай value==0 → '1' в Num_String[3]
+ *   → "1000" (bonus-points-маркер). */
 void num_to_num_string(uint8_t value) {
+    /* STA Temp; LDX #Num_String; JSR Null_8Bytes_String */
+    Temp = value;
     null_8bytes_string(Num_String);
-    if (value == 0u) {
-        Num_String[3] = 1u; /* "1000" bonus marker */
-        return;
-    }
-    Num_String[5] = (uint8_t)(value & 0x0Fu);
-    Num_String[4] = (uint8_t)((value >> 4u) & 0x0Fu);
+    /* LDA Temp; BEQ @_ */
+    if (Temp == 0u) goto at_;
+    /* AND #$F; STA Num_String+5 */
+    Num_String[5] = (uint8_t)(Temp & 0x0Fu);
+    /* LDA Temp; LSR×4; STA Num_String+4 */
+    Num_String[4] = (uint8_t)((Temp >> 4u) & 0x0Fu);
+    return;
+
+at_: /* ASM: @_ — if zero passed, set 1000-points marker */
+    /* LDA #1; STA Num_String+3 */
+    Num_String[3] = 1u;
 }
 
-/* ASM: ByteTo_Num_String (4333) — decimal split for arbitrary byte (0-99). */
+/* ASM: ByteTo_Num_String (4339). Десятичное разложение байта 0..99 → две цифры
+ * в Num_String[5] (десятки) и Num_String[6] (единицы). */
 void byte_to_num_string(uint8_t value) {
+    /* STA Temp; LDX #Num_String; JSR Null_8Bytes_String; LDA Temp */
+    Temp = value;
     null_8bytes_string(Num_String);
-    while (value >= 10) {
-        value = (uint8_t)(value - 10u);
-        Num_String[5]++;
-    }
-    Num_String[6] = value;
+
+Check_Max:
+    /* CMP #10; BCC @exit */
+    if (Temp < 10u) goto exit_;
+    /* SEC; SBC #10; INC Num_String+5; JMP Check_Max */
+    Temp = (uint8_t)(Temp - 10u);
+    Num_String[5] = (uint8_t)(Num_String[5] + 1u);
+    goto Check_Max;
+
+exit_: /* ASM: @exit */
+    /* STA Num_String+6 */
+    Num_String[6] = Temp;
 }
 
 /* ASM: Zero_Page_Viewer (1395). Debug-утилита, не вызывается из игры.

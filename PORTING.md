@@ -234,9 +234,9 @@
 
 - [x] `String_to_Screen_Buffer` (ASM:3602) → `string_to_screen_buffer()` в `game/draw.c` (at_/at__ labels; HighStrPtr_Byte = raw hi)
 - [x] `Save_Str_To_ScrBuffer` (ASM:3635) → `save_str_to_scr_buffer()` в `game/draw.c` (at_/at__/at___ labels, BMI через (int8_t)<0)
-- [x] `PtrToNonzeroStrElem` (ASM:4135) → `ptr_to_nonzero_str_elem()` + `save_aligned_str_to_scr_buffer()` в `game/strings.c`
-- [x] `Num_To_NumString` (ASM:4291) → `num_to_num_string()` в `game/strings.c`
-- [x] `ByteTo_Num_String` (ASM:4339) → `byte_to_num_string()` в `game/strings.c`
+- [x] `PtrToNonzeroStrElem` (ASM:4135) → `ptr_to_nonzero_str_elem()` в `game/draw.c` — все 4 ASM-метки сохранены (`PtrToNonzeroStrElem`/`at_`/`at__`/`at___`); при `$FF`-терминаторе откатывает указатель на 2 байта при `Tmp_CharIndexBase==0` (для title HI-score: «00» при score=0) или на 1 байте иначе (для жизней / уровня: «0»). ASM-fallthrough из первого `DEX/DEY` во второй сохранён через падение исполнения. **C-port хелпер** `save_aligned_str_to_scr_buffer()` оборачивает связку «PtrToNonzeroStrElem → Save_Str_To_ScrBuffer»: в ASM CPU-регистр X служит счётчиком display-колонки и инкрементится внутри `PtrToNonzeroStrElem` через INX; в C регистра нет, поэтому хелпер вычисляет `skip = p - base_str` и передаёт `col + skip` в `save_str_to_scr_buffer`. Не самостоятельная ASM-функция.
+- [x] `Num_To_NumString` (ASM:4291) → `num_to_num_string()` в `game/draw.c` (метка `at_` для value==0 ветки; `Temp` сохранён как глобал per ASM `STA Temp`)
+- [x] `ByteTo_Num_String` (ASM:4339) → `byte_to_num_string()` в `game/draw.c` (метки `Check_Max`/`exit_`; десятичное разложение через цикл вычитания 10 с goto)
 - [x] `Null_8Bytes_String` (ASM:4316) → `null_8bytes_string()` в `game/draw.c` (memset(0,7)+str[7]=$FF)
 - [x] `StaffStr_Store` (ASM:3340) → `staff_str_store()` в `game/reset.c` (at_ label, DEX/BPL)
 - [x] `StaffStr_Check` (ASM:3368) → `staff_str_check()` в `game/reset.c` (at_/ColdBoot labels)
@@ -359,6 +359,10 @@
 - `status_noop(uint8_t)` — placeholder в `battle_bullet_status.c`, `battle_tank_draw.c`, `battle_tank_status.c`. Заполняет нулевой слот jump-table (старший ниббл Bullet/Tank_Status == 0 → пуля/танк отсутствует → диспетч-функция не должна ничего делать). В ASM этого «no-op» нет — там просто RTS-stub в таблице.
 - `bullet_end_ice_move(uint8_t)` в `battle_bullet_draw.c` — C-адаптер для ASM `End_Ice_Move` (просто RTS). Нужен потому, что `BulletGFX_JumpTable` требует `void(uint8_t)`-сигнатуру, а реальная `end_ice_move(void)` имеет другую.
 - `init_zp_bytes(void)` в `random.c` — однократная инициализация буфера `zp_bytes[256]` с симулированным «мусором» power-on RAM (через PRNG из poweron_randomize). В ASM эту роль играет неинициализированная zero-page после хардварного RESET.
+
+C-port-публичные хелперы без прямого ASM-аналога (документированы в PORTING как «C-port helper»):
+
+- `save_aligned_str_to_scr_buffer(col, row, base_str)` в `draw.c` — оборачивает связку `PtrToNonzeroStrElem` + `Save_Str_To_ScrBuffer`. В ASM эти две функции вызываются последовательно, причём `PtrToNonzeroStrElem` инкрементит CPU-регистр X (display-колонку) через `INX` за каждый пропущенный ноль. В C регистра X нет — хелпер вычисляет `skip = p - base_str` и передаёт `col + skip` в `save_str_to_scr_buffer`.
 
 Jump-table и static-данные (тоже `static`, но это массивы, не функции):
 
