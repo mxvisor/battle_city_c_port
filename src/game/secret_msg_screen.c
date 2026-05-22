@@ -12,15 +12,19 @@ static const uint8_t aWrittenBy[] = {
     'W','R','I','T','T','E','N',' ',
     'B','Y',0xFF
 };
+/* ASM: aOpenkreach (3118) — "OPENkREACH", где 'k' (0x6B) = тайл «-» в CHR-таблице.
+ * String_to_Screen_Buffer пишет байты как тайлы без Char_Index_Base, поэтому
+ * использовать ASCII '-' (0x2D) нельзя — это посторонний тайл. */
 static const uint8_t aOpenkreach[] = {
-    'O','P','E','N','-','R','E','A','C','H',0xFF
+    'O','P','E','N',0x6B,'R','E','A','C','H',0xFF
 };
 static const uint8_t aWhoLovesNoriko[] = {
     'W','H','O',' ',
     'L','O','V','E','S',' ',
     'N','O','R','I','K','O',0xFF
 };
-static const uint8_t aDot[] = { '.', 0xFF };
+/* ASM: aDot (3120) — тайл «.» лежит по индексу $69, не ASCII 0x2E. */
+static const uint8_t aDot[] = { 0x69, 0xFF };
 
 /* ASM: Draw_RespawnPic (1112). Tile = $A1 + (3 - |3 - Counter|) * 4. */
 void draw_respawn_pic(void) {

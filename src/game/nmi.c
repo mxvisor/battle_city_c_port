@@ -117,18 +117,22 @@ exit_:
 }
 
 /* ASM: Update_Screen (4125). Бежит по Screen_Buffer, выгружая записи
- * формата [hi, lo, data..., $FF] в PPU через ppu_data_write. */
+ * формата [hi, lo, data..., $FF] в PPU через ppu_data_write.
+ *
+ * ВАЖНО: `$FF` может встретиться как данные (например, attribute-байт со
+ * всеми pal-3 квадрантами при заливке 2x2 области одной палитрой).
+ * Чтобы отличать «данные $FF» от терминатора: эмиттер удваивает любой
+ * data-байт $FF в Screen_Buffer (см. screen_buffer_emit_value). Парсер:
+ *   $FF + не-$FF → терминатор (переход к следующей записи)
+ *   $FF + $FF    → escape-последовательность для data-байта $FF */
 void update_screen(void) {
-    /* LDX ScrBuffer_Pos; LDA #0; STA Screen_Buffer,X; TAX — терминатор + сброс X */
     Screen_Buffer[ScrBuffer_Pos] = 0u;
     uint8_t x = 0u;
     uint16_t addr = 0u;
     uint8_t val;
 
 at_:
-    /* CPX ScrBuffer_Pos; BEQ Update_Screen_End */
     if (x == ScrBuffer_Pos) goto Update_Screen_End;
-    /* LDA Screen_Buffer,X; INX; STA PPU_ADDRESS x2 — hi/lo адрес записи */
     {
         uint8_t hi = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
         uint8_t lo = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
@@ -136,13 +140,22 @@ at_:
     }
 
 at__:
-    /* LDA Screen_Buffer,X; INX; CMP #$FF; BNE @___ */
     val = Screen_Buffer[x]; x = (uint8_t)(x + 1u);
-    if (val == 0xFFu) goto at_;
-    /* STA PPU_DATA */
-    ppu_data_write(addr, val);
-    addr = (uint16_t)(addr + 1u);
-    goto at__;
+    if (val != 0xFFu) {
+        ppu_data_write(addr, val);
+        addr = (uint16_t)(addr + 1u);
+        goto at__;
+    }
+    /* val == $FF: peek next byte */
+    if (x < ScrBuffer_Pos && Screen_Buffer[x] == 0xFFu) {
+        /* Escape-последовательность: $FF $FF → data-байт $FF */
+        x = (uint8_t)(x + 1u);
+        ppu_data_write(addr, 0xFFu);
+        addr = (uint16_t)(addr + 1u);
+        goto at__;
+    }
+    /* Одиночный $FF — терминатор записи */
+    goto at_;
 
 Update_Screen_End:
     ScrBuffer_Pos = 0u;

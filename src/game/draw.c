@@ -487,8 +487,14 @@ void attrib_to_scr_buffer(void) {
     uint8_t pos = ScrBuffer_Pos;
     Screen_Buffer[pos++] = 0x23; /* hi byte: NT page + $23 offset (attrib row of NT) */
     Screen_Buffer[pos++] = (uint8_t)(0xC0u + attr_index); /* lo byte */
-    Screen_Buffer[pos++] = NT_Buffer[0x3C0 + attr_index];
-    Screen_Buffer[pos++] = 0xFFu;
+    uint8_t attr_val = NT_Buffer[0x3C0 + attr_index];
+    Screen_Buffer[pos++] = attr_val;
+    /* Если attribute-байт = $FF (все 4 квадранта pal 3), нужен escape: дублируем
+     * $FF, чтобы update_screen не принял его за терминатор записи. См. nmi.c. */
+    if (attr_val == 0xFFu) {
+        Screen_Buffer[pos++] = 0xFFu;
+    }
+    Screen_Buffer[pos++] = 0xFFu; /* терминатор записи */
     ScrBuffer_Pos = pos;
 }
 

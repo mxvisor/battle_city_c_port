@@ -396,7 +396,7 @@ ASM-таблица строк (ASM:3084–3158). Каждая строка за�
 | `aPts` (3129) | `"PTS"` | Pts-screen: подпись очков |
 | `aTotal` (3152) | `"TOTAL"` | Pts-screen: TOTAL |
 | `aLine` (3154) | `$5C×8,$FF` | Pts-screen: разделительная линия над TOTAL |
-| `aBonus` (3155) | `"BONUS"` | Pts-screen: BONUS (для bonus-уровня) |
+| `aBonus` (3155) | `"BONUS"`,$15 | Pts-screen: «BONUS! 1000 PTS» — награда лидеру по фрагам (рисуется под IP/IIP в pts_screen |
 | `aStage` (3158) | `"STAGE"` | Stage-select / pts-screen: «STAGE NN» |
 
 ### Tile-«строки» (тайловые $FF-terminated массивы)
