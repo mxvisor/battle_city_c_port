@@ -32,8 +32,8 @@ void aim_first_player(uint8_t slot);
 void load_tank(uint8_t slot);
 /* ASM: Set_Respawn (5140) */
 void set_respawn(uint8_t slot);
-/* ASM: Get_RandomAim (5172) */
-void get_random_aim(void);
+/* ASM: Get_RandomAim (5172) — slot заменяет CPU-регистр X (= Counter в caller'е). */
+void get_random_aim(uint8_t slot);
 /* ASM: Relation_To_Byte (4471). Использует Carry от предыдущего SBC, поэтому
  * принимает оба операнда (lhs был в A, rhs в памяти до SBC). */
 uint8_t relation_to_byte(uint8_t lhs, uint8_t rhs);

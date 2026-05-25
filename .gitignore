@@ -26,3 +26,8 @@ data/chr.bin
 
 # Documentation
 DOCS/
+
+# Temporary files
+*.py
+*.py.*
+BUGS.md
