@@ -279,8 +279,8 @@ void check_obj(uint8_t slot) {
     int8_t dx = bullet_x_inc[dir];
     int8_t dy = bullet_y_inc[dir];
     /* ASL×3 — *8 */
-    int8_t dx8 = (int8_t)(dx << 3);
-    int8_t dy8 = (int8_t)(dy << 3);
+    int8_t dx8 = (int8_t)(uint8_t)((uint8_t)dx << 3);  /* ASL над байтом: без UB при dx < 0 */
+    int8_t dy8 = (int8_t)(uint8_t)((uint8_t)dy << 3);
     Tmp_Status1 = (uint8_t)dx8;
     Tmp_Status2 = (uint8_t)dy8;
     /* ADC Tank_Y,X; STA Block_Y; ADC Tank_X,X; STA Block_X */

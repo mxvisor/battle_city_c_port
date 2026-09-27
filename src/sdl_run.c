@@ -6,6 +6,7 @@
 #include "nes/config.h"
 #include "nes/ppu_sim.h"
 #include "game/nmi.h"
+#include "game/ppu_registers.h"
 #include "game/draw.h"
 #include "game/sound_engine.h"
 #include <SDL.h>
@@ -51,7 +52,11 @@ static void update_game(void) {
         SDL_RenderClear(sdl_get_renderer());
         SDL_RenderCopy(sdl_get_renderer(), sdl_get_texture(), NULL, NULL);
         SDL_RenderPresent(sdl_get_renderer());
-        play_sound();
+        /* Play_Sound в ASM вызывается только из NMI, а NMI генерируется лишь
+         * при бите 7 PPU_CTRL_REG1. До Set_PPU в RESET он сброшен — иначе
+         * play_sound() читал бы power-on мусор Sound_DataBlocks до Sound_Stop
+         * (индекс до 250 в SoundChannels[4]). */
+        if ((PPU_CTRL_REG1 & 0x80u) != 0u) play_sound();
     }
 }
 

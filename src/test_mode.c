@@ -3,6 +3,7 @@
 #include "nes/ppu_sim.h"
 #include "nes/apu_sim.h"
 #include "game/nmi.h"
+#include "game/ppu_registers.h"
 #include "game/draw.h"
 #include "game/sound_engine.h"
 #include <stdatomic.h>
@@ -122,7 +123,7 @@ static void frame_tick(void) {
     if (atomic_load_explicit(&game_in_nmi_wait, memory_order_acquire)) {
         ppu_render(pixels);
         nmi();
-    } else {
+    } else if ((PPU_CTRL_REG1 & 0x80u) != 0u) {  /* NMI включён (см. sdl_run.c) */
         play_sound();
     }
     tick++;

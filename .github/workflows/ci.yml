@@ -106,3 +106,28 @@ jobs:
           # 124 = timeout убил живой процесс: игра проработала 10 с без падения
           if [ "$rc" -ne 124 ]; then echo "::error::battle_city exited early with code $rc"; exit 1; fi
           echo "OK: still running after 10 s"
+
+  sanitizers:
+    name: Linux SDL2 Debug +ASan/UBSan (regression)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install SDL2
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_FLAGS="$STRICT_CFLAGS -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Regression test under sanitizers
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: tests/regression/run.sh build/battle_city
