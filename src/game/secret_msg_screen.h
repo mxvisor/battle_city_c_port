@@ -10,7 +10,7 @@ void draw_drop(void);
 /* ASM: Wait_1Second (1046) */
 void wait_1second(void);
 
-/* ASM: Draw_RespawnPic (1112) */
+/* ASM: Draw_RespawnPic (1099) */
 void draw_respawn_pic(void);
 
 #endif // SECRET_MSG_H

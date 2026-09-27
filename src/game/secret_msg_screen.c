@@ -26,7 +26,7 @@ static const uint8_t aWhoLovesNoriko[] = {
 /* ASM: aDot (3120) — тайл «.» лежит по индексу $69, не ASCII 0x2E. */
 static const uint8_t aDot[] = { 0x69, 0xFF };
 
-/* ASM: Draw_RespawnPic (1112). Tile = $A1 + (3 - |3 - Counter|) * 4. */
+/* ASM: Draw_RespawnPic (1099). Tile = $A1 + (3 - |3 - Counter|) * 4. */
 void draw_respawn_pic(void) {
     nmi_wait();
     TSA_Pal = 3u;

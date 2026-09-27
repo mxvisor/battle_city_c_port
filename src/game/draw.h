@@ -47,13 +47,13 @@ void copy_attrib_to_scrn_buff(void);
 void attrib_to_scr_buffer(void);
 /* ASM: TSA_Pal_Ops (3506) */
 uint8_t tsa_pal_ops(uint8_t x, uint8_t y);
-/* ASM: OR_Pal (3558) */
+/* ASM: OR_Pal (3561) */
 uint8_t or_pal(uint8_t a);
 /* ASM: Set_PPU (3254) */
 void set_ppu(void);
 /* ASM: Store_NT_Buffer_InVRAM (3862) */
 void store_nt_buffer_in_vram(void);
-/* ASM: Save_To_VRAM (3875) */
+/* ASM: Save_to_VRAM (3806) */
 void save_to_vram(void);
 /* ASM: Screen_Off (3264) */
 void screen_off(void);
@@ -85,7 +85,7 @@ void num_to_num_string(uint8_t value);
 /* ASM: ByteTo_Num_String (4333) */
 void byte_to_num_string(uint8_t value);
 
-/* ASM: Null_8Bytes_String (664) */
+/* ASM: Null_8Bytes_String (4316) */
 void null_8bytes_string(uint8_t *str);
 
 /* ASM: Zero_Page_Viewer (1395) */

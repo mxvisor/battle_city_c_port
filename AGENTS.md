@@ -40,7 +40,7 @@ cmake --build build -j8                  # бинарник: build/battle_city
 
 ## Неочевидные ловушки
 
-- **ASM нет в репозитории.** `DOCS/` в `.gitignore`. Источник: [romhack/battle-city-disassembly](https://github.com/romhack/battle-city-disassembly), файл кладётся в `DOCS/Battle City (J).asm` (8079 строк). Все номера строк (`ASM:1234`) в коде и `PORTING.md` — по нему. Если файла нет — скажи об этом, а не восстанавливай логику по памяти.
+- **ASM нет в репозитории.** `DOCS/` в `.gitignore`. Эталон: [`Battle City (J).asm`](https://github.com/romhack/battle-city-disassembly/blob/main/Battle%20City%20(J).asm) из romhack/battle-city-disassembly (8056 строк), кладётся в `DOCS/Battle City (J).asm`. Все номера строк (`ASM:1234`, `/* ASM: Name (N) */`) — это строка `Name:` в нём. Если файла нет — скажи об этом, а не восстанавливай логику по памяти.
 - **`-Wunused-label` — ожидаемые предупреждения.** Неиспользуемые ASM-метки сохраняются намеренно; не удаляй их ради чистой сборки.
 - `.WORD` в 6502 — little-endian: `.WORD $F207` = байты `07 F2`.
 - Дизассемблер ошибается: `AND #Sound_CurrentData_Ptr` — это `AND #$C0` (байт принят за адрес), `ORA #Tank_Status` — это `ORA #$A0`. Смотри контекст.

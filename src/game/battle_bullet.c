@@ -19,7 +19,7 @@ void change_bullet_coord(uint8_t slot, uint8_t direction) {
 }
 
 
-/* ASM: Hide_All_Bullets (6315). Обнуляет Bullet_Status[0..9]. */
+/* ASM: Hide_All_Bullets (6301). Обнуляет Bullet_Status[0..9]. */
 void hide_all_bullets(void) {
     uint8_t x = 9u;
 at_:

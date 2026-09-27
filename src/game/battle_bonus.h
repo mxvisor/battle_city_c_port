@@ -11,19 +11,19 @@ void bonus_draw(void);
 uint8_t multiply_bonus_coord(uint8_t a);
 /* ASM: Bonus_Handle (7138) */
 void bonus_handle(void);
-/* ASM: Bonus_Helmet (7148) */
+/* ASM: Bonus_Helmet (7220) */
 void bonus_helmet(void);
-/* ASM: Bonus_Watch (7164) */
+/* ASM: Bonus_Watch (7229) */
 void bonus_watch(void);
-/* ASM: Bonus_Shovel (7176) */
+/* ASM: Bonus_Shovel (7238) */
 void bonus_shovel(void);
-/* ASM: Bonus_Star (7188) */
+/* ASM: Bonus_Star (7252) */
 void bonus_star(void);
-/* ASM: Bonus_Grenade (7202) */
+/* ASM: Bonus_Grenade (7268) */
 void bonus_grenade(void);
-/* ASM: Bonus_Life (7240) */
+/* ASM: Bonus_Life (7296) */
 void bonus_life(void);
-/* ASM: Bonus_Pistol (7256) */
+/* ASM: Bonus_Pistol (7302) */
 void bonus_pistol(void);
 
 #endif // BATTLE_BONUS_H

@@ -8,7 +8,7 @@
 /* ASM: Reset_ScreenStuff (3293) */
 void reset_screen_stuff(void);
 
-/* ASM: RESET (3321) */
+/* ASM: RESET (308) */
 void reset(void);
 
 

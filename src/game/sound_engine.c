@@ -150,7 +150,7 @@ bool sound_command_clear_counters(void) {
     return true;
 }
 
-/* ASM: Sound_Command_LoopCount0 (7726).
+/* ASM: Sound_Command_LoopCount0 (7709).
  * В ASM это одна функция с тремя точками входа (LoopCount0/1/2),
  * соединёнными через .BYTE $2C (BIT abs), глотающий следующие LDX #N.
  * В C трюк невозможен — развёрнут в три отдельные C-функции,
@@ -170,7 +170,7 @@ equal0:
     return sound_command_advance_pointer();
 }
 
-/* ASM: Sound_Command_LoopCount1 (7730, точка входа в общий equal0 c X=1) */
+/* ASM: Sound_Command_LoopCount1 (7713, точка входа в общий equal0 c X=1) */
 bool sound_command_loop_count1(void) {
     uint8_t target;
 equal0:
@@ -181,7 +181,7 @@ equal0:
     return sound_command_advance_pointer();
 }
 
-/* ASM: Sound_Command_LoopCount2 (7734, точка входа в общий equal0 c X=2) */
+/* ASM: Sound_Command_LoopCount2 (7717, точка входа в общий equal0 c X=2) */
 bool sound_command_loop_count2(void) {
     uint8_t target;
 equal0:
@@ -192,14 +192,14 @@ equal0:
     return sound_command_advance_pointer();
 }
 
-/* ASM: Sound_Command_AdvancePointer (7746) — fallthrough из LoopCountN.
+/* ASM: Sound_Command_AdvancePointer (7729) — fallthrough из LoopCountN.
  * LDY #5; LDA (ptr),Y; CLC; ADC #1; STA (ptr),Y; JMP readNextCommandByte */
 bool sound_command_advance_pointer(void) {
     Sound_DataBlocks[Sound_CurrentSlot * 8u + 5u]++;
     return true;
 }
 
-/* ASM: Sound_Command_JumpToOffset (7754).
+/* ASM: Sound_Command_JumpToOffset (7737).
  * JSR Sound_LoadNextByte; LDY #5; STA (ptr),Y; JMP readNextCommandByte */
 bool sound_command_jump_to_offset(void) {
     Sound_DataBlocks[Sound_CurrentSlot * 8u + 5u] = sound_load_next_byte();

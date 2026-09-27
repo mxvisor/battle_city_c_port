@@ -60,7 +60,7 @@ exit_: /* ASM: @exit */
     return;
 }
 
-/* ASM: Bullet_Move (5563). Сдвигает пулю по направлению, дважды если flag speed. */
+/* ASM: Bullet_Move (5553). Сдвигает пулю по направлению, дважды если flag speed. */
 void bullet_move(uint8_t slot) {
     /* LDA Bullet_Status,X; AND #3; TAY */
     uint8_t direction = (uint8_t)(Bullet_Status[slot] & 3u);

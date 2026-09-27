@@ -105,7 +105,7 @@ at_:
     return;
 }
 
-/* ASM: Draw_Char (4026). Читает 8 байт CHR-графики из второго CHR-генератора
+/* ASM: Draw_Char (3974). Читает 8 байт CHR-графики из второго CHR-генератора
  * через регистры PPU_ADDRESS/PPU_DATA, складывает в стек (PHA), затем
  * выводит 8x8 битмап в NT_Buffer по 4-пиксельной сетке. */
 void draw_char(uint8_t char_index) {
@@ -176,7 +176,7 @@ pixelProcessed:
     if (Counter != 0u) goto NextByte;
 }
 
-/* ASM: SaveSprTo_SprBuffer (4375). Кладёт один 8x16 спрайт в SprBuffer,
+/* ASM: SaveSprTo_SprBuffer (4356). Кладёт один 8x16 спрайт в SprBuffer,
  * проверяет тайл NT по адресу (x+3, y) — если $22 (лес), OR-ит Spr_Attrib в TSA_Pal. */
 void save_spr_to_spr_buffer(uint8_t x, uint8_t y) {
     /* TXA; STA Spr_X */
@@ -447,7 +447,7 @@ void draw_black_row(void) {
     }
 }
 
-/* ASM: Draw_GrayFrame (3906). Заливает весь NT серым тайлом $11, attribute=0,
+/* ASM: Draw_GrayFrame (3882). Заливает весь NT серым тайлом $11, attribute=0,
  * затем рисует чёрное игровое поле строками от Block_X/Block_Y, Counter строк. */
 void draw_gray_frame(void) {
     fill_nt_buffer(0x11u);       /* ASM: LDX #0; @Fill_NTBuffer: STA NT_Buffer,X / +$100 / +$200 / +$300; INX; BNE */
@@ -688,7 +688,7 @@ at_: /* ASM: @_ — if zero passed, set 1000-points marker */
     Num_String[3] = 1u;
 }
 
-/* ASM: ByteTo_Num_String (4339). Десятичное разложение байта 0..99 → две цифры
+/* ASM: ByteTo_Num_String (4333). Десятичное разложение байта 0..99 → две цифры
  * в Num_String[5] (десятки) и Num_String[6] (единицы). */
 void byte_to_num_string(uint8_t value) {
     /* STA Temp; LDX #Num_String; JSR Null_8Bytes_String; LDA Temp */

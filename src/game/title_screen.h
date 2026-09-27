@@ -9,11 +9,11 @@ int scroll_title_scrn(void);
 int title_screen_loop(void);
 /* ASM: Selected_1player (1937) */
 void selected_1player(void);
-/* ASM: Selected_2players (1944) */
+/* ASM: Selected_2players (1941) */
 void selected_2players(void);
 /* ASM: Selected_Construction (1953) */
 void selected_construction(void);
-/* ASM: Draw_TitleCursor (1795) */
+/* C-port helper: ASM-метки Draw_TitleCursor нет; обёртка над tanks_status_handle() */
 void draw_title_cursor(void);
 
 #endif // TITLE_H

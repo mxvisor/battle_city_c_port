@@ -47,7 +47,7 @@ static const uint8_t Y_Player_Respawn[2] = { 0xD8, 0xD8 };
 static const uint8_t X_Enemy_Respawn[3] = { 0x18, 0x78, 0xD8 };
 static const uint8_t Y_Enemy_Respawn[3] = { 0x18, 0x18, 0x18 };
 
-/* ASM: Respawn_Handle (6155). Запускает респаун следующего врага из резерва. */
+/* ASM: Respawn_Handle (4573). Запускает респаун следующего врага из резерва. */
 void respawn_handle(uint8_t unused) {
     (void)unused;
     /* LDA Respawn_Timer; BEQ @_ */
@@ -78,7 +78,7 @@ End_Respawn_Handle:
     return;
 }
 
-/* ASM: Make_Respawn (6221). Инициализирует Tank_X/Y/Status для нового танка
+/* ASM: Make_Respawn (6185). Инициализирует Tank_X/Y/Status для нового танка
  * (игрока или врага), с возможностью бонусного танка при Reinforce_Count==3/10/17. */
 void make_respawn(uint8_t x) {
     Tank_Type[x] = 0u;

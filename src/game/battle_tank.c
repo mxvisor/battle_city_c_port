@@ -6,7 +6,7 @@
 #include "coords.h"
 
 
-/* ASM: Detect_Motion (4603). Возвращает 1 если игрок жмёт направление и tank жив. */
+/* ASM: Detect_Motion (4556). Возвращает 1 если игрок жмёт направление и tank жив. */
 uint8_t detect_motion(uint8_t x) {
     uint8_t buttons = (x == 0u) ? Joypad1_Buttons : Joypad2_Buttons;
     /* LDA Joypad1_Buttons,X; AND #$F0; BEQ End_Detect_Motion */
@@ -19,7 +19,7 @@ End_Detect_Motion:
     return 0u;
 }
 
-/* ASM: Check_BorderReach (1690). Зажимает Tank_X/Y в диапазон [$18..$D8]. */
+/* ASM: Check_BorderReach (1662). Зажимает Tank_X/Y в диапазон [$18..$D8]. */
 void check_border_reach(uint8_t slot) {
     /* LDA Tank_X; CMP #$D8; BCC @_; LDA #$D8; STA Tank_X */
     if (Tank_X[slot] < 0xD8u) goto at_;
@@ -97,7 +97,7 @@ loop: /* ASM: @loop */
     goto next_Tank;
 }
 
-/* ASM: Invisible_Timer_Handle (6091). Для 2 игроков: если есть таймер силового
+/* ASM: Invisible_Timer_Handle (5995). Для 2 игроков: если есть таймер силового
  * поля — раз в 64 кадра уменьшает его и рисует анимацию (2 фрейма). */
 void invisible_timer_handle(uint8_t unused) {
     (void)unused;

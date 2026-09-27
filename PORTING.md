@@ -15,8 +15,8 @@
 - [x] `Set_PPU` (ASM:3254) → `set_ppu()` в `game/draw.c` (VBlank_Wait + PPU_CTRL=$B0)
 - [x] `Screen_Off` (ASM:3264) → `screen_off()` в `game/draw.c` (NMI_Wait + PPU_CTRL1=$10 + PPU_CTRL2=$06)
 - [x] `Null_NT_Buffer` (ASM:3276) → `null_nt_buffer()` в `game/draw.c` (memset эквивалентен ASM 4×$100-loop)
-- [x] `Reset_ScreenStuff` (ASM:3322) → `reset_screen_stuff()` в `game/reset.c` (hot_boot label соответствует ASM HotBoot)
-- [x] `Update_Screen` (ASM:4125) → `update_screen()` в `game/nmi.c` (at_/at__/Update_Screen_End labels; **исправлен UB**: было два `x++` в одном выражении — теперь раздельные шаги)
+- [x] `Reset_ScreenStuff` (ASM:3293) → `reset_screen_stuff()` в `game/reset.c` (hot_boot label соответствует ASM HotBoot)
+- [x] `Update_Screen` (ASM:4095) → `update_screen()` в `game/nmi.c` (at_/at__/Update_Screen_End labels; **исправлен UB**: было два `x++` в одном выражении — теперь раздельные шаги)
 - [x] `Save_to_VRAM` (ASM:3806) → `save_to_vram()` в `game/draw.c`
 - [x] `Store_NT_Buffer_InVRAM` (ASM:3862) → `store_nt_buffer_in_vram()` в `game/draw.c` (at_ label)
 - [x] `Load_Pals` (ASM:3376) → `load_pals()` в `game/reset.c` (static — VBlank_Wait + spr_pal_load + load_bkg_pal с BkgPal_Number=0)
@@ -38,7 +38,7 @@
 - [x] `CurPos_To_PixelCoord` (ASM:1962) → `cur_pos_to_pixel_coord()` в `game/coords.c` ((pos<<4)+$8B)
 - [x] `Construction` (ASM:349) → `construction()` в `game/construction_screen.c` (все ASM-метки восстановлены: `Skip_LoadFrame`/`Construction_Loop`/`Skip_Status_Handle`/`occurenceNotZero`/`loBitNotSet`/`occurenceNotZero_2`/`tsaNotFf`/`Construct_Draw_TSA`/`Construct_StartCheck`/`End_Construction`); **исправлен баг**: при A/B-нажатии ASM безусловно прыгает на `Construct_Draw_TSA` (рисует блок), а C-версия рисовала только при удерживании A/B (Joypad1_Buttons & 3) — теперь по нажатию A/B блок всегда перерисовывается под танком; убраны не-ASM строчки (`PPU_Addr_Ptr=$1C` уже в make_gray_frame, лишний `BkgPal_Number=0`); `JMP Title_Loaded` моделируется возвратом в caller
 - [x] `Make_GrayFrame` (ASM:1813) → `make_gray_frame()` в `game/draw.c` (Block_X/Y=2, Counter/2=26)
-- [x] `Draw_GrayFrame` (ASM:3906) → `draw_gray_frame()` в `game/draw.c` (`while` → `Draw_BlackRow`/`at_` goto-метки)
+- [x] `Draw_GrayFrame` (ASM:3882) → `draw_gray_frame()` в `game/draw.c` (`while` → `Draw_BlackRow`/`at_` goto-метки)
 
 ## Stage select / Battle entry
 
@@ -46,7 +46,7 @@
 - [x] `Draw_StageNumString` (ASM:1977) → `draw_stage_num_string()` в `game/stage_select_screen.c` (убран defensive `if (x>=120) return`)
 - [x] `Clear_NT` (ASM:627) → `clear_nt()` в `game/draw.c`
 - [x] `Init_Level_VARs` (ASM:666) → `init_level_vars()` в `game/battle_screen.c` (at_ label для @_ skip)
-- [x] `SetUp_LevelVARs` (ASM:798) → `setup_level_vars()` в `game/battle_screen.c` (at_/Set_VARs/at__/Respawn_Delay_Calc/exit_ labels)
+- [x] `SetUp_LevelVARs` (ASM:742) → `setup_level_vars()` в `game/battle_screen.c` (at_/Set_VARs/at__/Respawn_Delay_Calc/exit_ labels)
 - [x] `Set_VARs` (label, ASM:760) → часть `setup_level_vars()`
 - [x] `Respawn_Delay_Calc` (ASM:798 label) → часть `setup_level_vars()`
 - [x] `Battle_Loop` (ASM:695) → `battle_loop()` в `game/battle_screen.c` — 18 JSR-вызовов в точном ASM-порядке (ice_detect → ice_move → motion_handle → hide_hi_bit_under_tank → all_bullets_status_handle → hq_handle → invisible_timer_handle → make_player_shot → make_enemy_shot → respawn_handle → bullet_fly_handle → bullet_to_bullet_impact_handle → bullet_to_tank_impact_handle → bonus_handle → gameover_str_move_handle → play_snd_move → draw_player_lives → swap_pal_colors). Внутри нет ASM-меток
@@ -78,7 +78,7 @@
 - [x] `Show_Secret_Msg` (ASM:952) → `show_secret_msg()` в `game/secret_msg_screen.c` (линейная последовательность вызовов совпадает с ASM)
 - [x] `Wait_1Second` (ASM:1046) → `wait_1second()` в `game/secret_msg_screen.c` (at_ label)
 - [x] `Draw_Drop` (ASM:1062) → `draw_drop()` в `game/secret_msg_screen.c` (at_/at__ labels; респаун 7 итераций как в ASM, не 8)
-- [x] `Draw_RespawnPic` (ASM:1112) → `draw_respawn_pic()` в `game/secret_msg_screen.c` (at_ label, явная 8-битная арифметика)
+- [x] `Draw_RespawnPic` (ASM:1099) → `draw_respawn_pic()` в `game/secret_msg_screen.c` (at_ label, явная 8-битная арифметика)
 
 ## HUD / Lives / Reinforcements / Pause / GameOver
 
@@ -125,37 +125,37 @@
 
 - [x] `TanksStatus_Handle` (ASM:5215) → `tanks_status_handle()` в `game/battle_tank_draw.c` (at_ label)
 - [x] `SingleTankStatus_Handle` (ASM:5233) → `single_tank_status_handle()` в `game/battle_tank_draw.c`
-- [x] `OperatingTank` (ASM:5469) → `operating_tank()` в `game/battle_tank_draw.c` (OperTank_Draw label)
+- [x] `OperatingTank` (ASM:5432) → `operating_tank()` в `game/battle_tank_draw.c` (OperTank_Draw label)
 - [x] `Respawn` (ASM:5491) → `respawn()` в `game/battle_tank_draw.c` (skip label)
-- [x] `Status_Core` (ASM:4910) → `status_core()` в `game/battle_tank_status.c` (jump table)
-- [x] `Misc_Status_Handle` (ASM:4943) → `misc_status_handle()` в `game/battle_tank_status.c` (LoadStts/End labels)
-- [x] `Get_RandomStatus` (ASM:4952) → `get_random_status()` в `game/battle_tank_status.c` (Sbc/Save/End labels)
-- [x] `Explode_Handle` (ASM:5127) → `explode_handle()` в `game/battle_tank_status.c` (Skip/SkipRiseBit/SaveStts/Dec_Enemy/CheckHQ/Check1pLives/End labels)
+- [x] `Status_Core` (ASM:4751) → `status_core()` в `game/battle_tank_status.c` (jump table)
+- [x] `Misc_Status_Handle` (ASM:4768) → `misc_status_handle()` в `game/battle_tank_status.c` (LoadStts/End labels)
+- [x] `Get_RandomStatus` (ASM:4920) → `get_random_status()` в `game/battle_tank_status.c` (Sbc/Save/End labels)
+- [x] `Explode_Handle` (ASM:5062) → `explode_handle()` в `game/battle_tank_status.c` (Skip/SkipRiseBit/SaveStts/Dec_Enemy/CheckHQ/Check1pLives/End labels)
 - [x] `Move_Tank` (ASM:1286) → `move_tank()` в `game/construction_screen.c` (все ASM-метки: `ArrowNotPressed`/`checkJoypad`/`delayEq14`/`moveTank`/`End_Move_Tank`)
-- [x] `Check_BorderReach` (ASM:1690) → `check_border_reach()` в `game/battle_tank.c` (at_/at__/at___/End labels)
-- [x] `Detect_Motion` (ASM:4603) → `detect_motion()` в `game/battle_tank.c` (End_Detect_Motion label)
-- [x] `Motion_Handle` (ASM:4741) → `motion_handle()` в `game/battle_tank.c` (Skip_TimerOps/Enemy/at_/JumpToStatusHandle/Motion_Handle_Next labels)
-- [x] `Ice_Move` (ASM:4690) → `ice_move()` в `game/battle_tank.c` (at_/loop/at___/at____/at_____/usual_Tank/iceStatus/skip/nextTank/End labels)
+- [x] `Check_BorderReach` (ASM:1662) → `check_border_reach()` в `game/battle_tank.c` (at_/at__/at___/End labels)
+- [x] `Detect_Motion` (ASM:4556) → `detect_motion()` в `game/battle_tank.c` (End_Detect_Motion label)
+- [x] `Motion_Handle` (ASM:4698) → `motion_handle()` в `game/battle_tank.c` (Skip_TimerOps/Enemy/at_/JumpToStatusHandle/Motion_Handle_Next labels)
+- [x] `Ice_Move` (ASM:4611) → `ice_move()` в `game/battle_tank.c` (at_/loop/at___/at____/at_____/usual_Tank/iceStatus/skip/nextTank/End labels)
 - [x] `Ice_Detect` (ASM:5813) → `ice_detect()` в `game/battle_tank.c` (loop/next_Tank labels)
-- [x] `Respawn_Handle` (ASM:4603) → `respawn_handle()` в `game/battle_respawn.c` (at_/at__/nextPlayer/End labels)
-- [x] `Make_Respawn` (ASM:6221) → `make_respawn()` в `game/battle_respawn.c` (Enemy_Operations/at_/Make_BonusEnemy/exit_ labels)
-- [x] `Set_Respawn` (ASM:5164) → `set_respawn()` в `game/battle_tank_status.c` (End_Set_Respawn label)
-- [x] `Load_Tank` (ASM:5206) → `load_tank()` в `game/battle_tank_status.c` (End_Load_Tank label)
-- [x] `Load_New_Tank` (ASM:6301) → `load_new_tank()` в `game/battle_respawn.c` (load_NewEnemy/continueProcess/checkTankType/exit labels)
-- [x] `Load_Enemy_Count` (ASM:6373) → `load_enemy_count()` в `game/battle_respawn.c` (LevelModeZero/SaveEnemyCount labels)
+- [x] `Respawn_Handle` (ASM:4573) → `respawn_handle()` в `game/battle_respawn.c` (at_/at__/nextPlayer/End labels)
+- [x] `Make_Respawn` (ASM:6185) → `make_respawn()` в `game/battle_respawn.c` (Enemy_Operations/at_/Make_BonusEnemy/exit_ labels)
+- [x] `Set_Respawn` (ASM:5140) → `set_respawn()` в `game/battle_tank_status.c` (End_Set_Respawn label)
+- [x] `Load_Tank` (ASM:5156) → `load_tank()` в `game/battle_tank_status.c` (End_Load_Tank label)
+- [x] `Load_New_Tank` (ASM:6242) → `load_new_tank()` в `game/battle_respawn.c` (load_NewEnemy/continueProcess/checkTankType/exit labels)
+- [x] `Load_Enemy_Count` (ASM:6343) → `load_enemy_count()` в `game/battle_respawn.c` (LevelModeZero/SaveEnemyCount labels)
 - [x] `Null_Status` (ASM:6315) → `null_status()` в `game/battle_tank.c` (at_ label, DEX/BPL)
-- [x] `Rise_TankStatus_Bit` (ASM:6352) → `rise_tank_status_bit()` в `game/battle_tank.c`
-- [x] `Button_To_DirectionIndex` (ASM:6644) → `button_to_direction_index()` в `game/battle_tank.c` (at_/at__/at___/at____ labels через ASL+BCC цепочку)
-- [x] `Compare_Block_X` (ASM:4999) → `compare_block_x()` в `game/battle_tank_status.c`
-- [x] `Compare_Block_Y` (ASM:5054) → `compare_block_y()` в `game/battle_tank_status.c`
+- [x] `Rise_TankStatus_Bit` (ASM:6331) → `rise_tank_status_bit()` в `game/battle_tank.c`
+- [x] `Button_To_DirectionIndex` (ASM:6373) → `button_to_direction_index()` в `game/battle_tank.c` (at_/at__/at___/at____ labels через ASL+BCC цепочку)
+- [x] `Compare_Block_X` (ASM:4952) → `compare_block_x()` в `game/battle_tank_status.c`
+- [x] `Compare_Block_Y` (ASM:4966) → `compare_block_y()` в `game/battle_tank_status.c`
 - [x] `Aim_FirstPlayer` (ASM:4979) → `aim_first_player(slot)` в `game/battle_tank_status.c` — точка входа конгломерата (`JMP Save_AI_ToStatus` моделируется как tail-call к `save_ai_to_status(slot)`); `AI_X_Aim = Tank_X[0]; AI_Y_Aim = Tank_Y[0]`. Используется как JSR-цель из Status_JumpTable[26]
 - [x] `Aim_ScndPlayer` (ASM:4986) → `aim_scnd_player(slot)` в `game/battle_tank_status.c` — то же что Aim_FirstPlayer но `Tank_X+1/Tank_Y+1` → `Tank_X[1]/Tank_Y[1]`; JSR-цель из Status_JumpTable[24]
 - [x] `Aim_HQ` (ASM:4993) → `aim_hq(slot)` в `game/battle_tank_status.c` — `AI_X_Aim = $78, AI_Y_Aim = $D8`; ASM-fallthrough в Save_AI_ToStatus развёрнут как явный вызов `save_ai_to_status(slot)`; JSR-цель из Status_JumpTable[22]
 - [x] `Save_AI_ToStatus` (ASM:4999) → `save_ai_to_status(slot)` в `game/battle_tank_status.c` — общий хвост Aim_*-конгломерата с единственным RTS; `JSR Load_AI_Status; STA Tank_Status,X` → `Tank_Status[slot] = load_ai_status(slot)`. `; End of function Aim_FirstPlayer` в ASM маркирует конец всей группы из 4 точек входа
 - [x] `Load_AI_Status` (ASM:5008) → `load_ai_status()` в `game/battle_tank_status.c` — все 4 ASM-метки сохранены (`Load_AIStatus_GetRandom`, `LoadSecondPart`, `checkDifferFlag`, `End_Load_AIStatus`); исправлены 2 бага: **(1)** player-branch использовал выдуманную проверку `Tank_Status[1] == 0` вместо ASM-формулы `((slot << 1) ^ Seconds_Counter) & 2`; **(2)** ASM `STA AI_X_DifferFlag` после вычисления `Y*3+X` перезаписывает глобал индексом — в C теперь тоже `AI_X_DifferFlag = ...` явно. AI_X_DifferFlag меняет роль: сначала 0/1/2 (sign), затем 0..8 (индекс таблицы) после `STA`
-- [x] `Get_RandomAim` (ASM:5215) → `get_random_aim()` в `game/battle_tank_status.c` (3-tier логика: HQ/random-dir/player через Respawn_Delay vs Seconds_Counter)
-- [x] `Relation_To_Byte` (ASM:4548) → `relation_to_byte()` в `game/battle_tank_status.c` (сигнатура `(lhs, rhs)` для эмуляции carry от SBC)
-- [x] `Invisible_Timer_Handle` (ASM:6091) → `invisible_timer_handle()` в `game/battle_tank.c` (loop_/at_/next_Invisible_Timer_Handle labels — переименованы с itm_*)
+- [x] `Get_RandomAim` (ASM:5172) → `get_random_aim()` в `game/battle_tank_status.c` (3-tier логика: HQ/random-dir/player через Respawn_Delay vs Seconds_Counter)
+- [x] `Relation_To_Byte` (ASM:4471) → `relation_to_byte()` в `game/battle_tank_status.c` (сигнатура `(lhs, rhs)` для эмуляции carry от SBC)
+- [x] `Invisible_Timer_Handle` (ASM:5995) → `invisible_timer_handle()` в `game/battle_tank.c` (loop_/at_/next_Invisible_Timer_Handle labels — переименованы с itm_*)
 
 ## Tank draw — взрывы, очки, ricochet, спавн-картинка
 
@@ -170,16 +170,16 @@
 
 - [x] `AllBulletsStatus_Handle` (ASM:5520) → `all_bullets_status_handle()` в `game/battle_bullet_status.c` (at_ label, DEC/BPL)
 - [x] `BulletStatus_Handle` (ASM:5536) → `bullet_status_handle()` в `game/battle_bullet_status.c` (jump table, защитный bounds-check 5u оставлен)
-- [x] `Bullet_Move` (ASM:5563) → `bullet_move()` в `game/battle_bullet_status.c` (End_Bullet_Move label)
+- [x] `Bullet_Move` (ASM:5553) → `bullet_move()` в `game/battle_bullet_status.c` (End_Bullet_Move label)
 - [x] `Change_BulletCoord` (ASM:5571) → `change_bullet_coord()` в `game/battle_bullet.c` (slot/direction как params)
 - [x] `Make_Ricochet` (ASM:5589) → `make_ricochet()` в `game/battle_bullet_status.c` (skip_/exit_ labels)
 - [x] `Make_Shot` (ASM:5612) → `make_shot()` в `game/battle_bullet.c` (skip_/quickBullet_End_Make_Shot/lastType/exit_ labels)
 - [x] `Make_Player_Shot` (ASM:5738) → `make_player_shot()` в `game/battle_bullet.c` (loop_/at__/next_Jump_Make_Shot labels)
 - [x] `Make_Enemy_Shot` (ASM:5785) → `make_enemy_shot()` в `game/battle_bullet.c` (loop_/next_Make_Enemy_Shot/exit_ labels)
 - [x] `Update_Ricochet` (ASM:5721) → `update_ricochet()` в `game/battle_bullet_draw.c`
-- [x] `Bullet_Fly_Handle` (ASM:6644) → `bullet_fly_handle()` в `game/battle_bullet.c` (loop/at__/at___/at____/getCoord/next/End labels)
-- [x] `Hide_All_Bullets` (ASM:6315) → `hide_all_bullets()` в `game/battle_bullet.c` (at_ label, DEX/BPL)
-- [x] `BulletToObject_Impact_Handle` (ASM:6722) → `bullet_to_object_impact_handle()` в `game/battle_collide.c` (at_/at__/Armored_Wall/BulletToObject_Return0/Return1 labels)
+- [x] `Bullet_Fly_Handle` (ASM:6553) → `bullet_fly_handle()` в `game/battle_bullet.c` (loop/at__/at___/at____/getCoord/next/End labels)
+- [x] `Hide_All_Bullets` (ASM:6301) → `hide_all_bullets()` в `game/battle_bullet.c` (at_ label, DEX/BPL)
+- [x] `BulletToObject_Impact_Handle` (ASM:6662) → `bullet_to_object_impact_handle()` в `game/battle_collide.c` (at_/at__/Armored_Wall/BulletToObject_Return0/Return1 labels)
 - [x] `BulletToTank_Impact_Handle` (ASM:6731) → `bullet_to_tank_impact_handle()` в `game/battle_collide.c` (все @-метки сохранены)
 - [x] `BulletToBullet_Impact_Handle` (ASM:7069) → `bullet_to_bullet_impact_handle()` в `game/battle_collide.c` (loop/loop_2/checkMinX/checkMinY/next labels)
 
@@ -205,7 +205,7 @@
 - [x] `Inc_Ptr_on_A` (ASM:3847) → `inc_ptr_on_a()` в `game/draw.c` (at_ label, BCC carry-check)
 - [x] `Copy_AttribToScrnBuff` (ASM:2206) → `copy_attrib_to_scrn_buff()` в `game/draw.c` (at_ label, per-byte с NMI_Wait, как в ASM — было ошибочно пачкой)
 - [x] `AttribToScrBuffer` (ASM:3482) → `attrib_to_scr_buffer()` в `game/draw.c`
-- [x] `TSA_Pal_Ops` (ASM:3534) → встроено в `tsa_pal_ops()` (at_/at__/at___/End_TSA_Pal_Ops labels)
+- [x] `TSA_Pal_Ops` (ASM:3506) → встроено в `tsa_pal_ops()` (at_/at__/at___/End_TSA_Pal_Ops labels)
 - [x] `OR_Pal` (ASM:3561) → `or_pal()` в `game/draw.c`
 - [x] `FillScr_Single_Row` (ASM:2242) → `fill_scr_single_row()` в `game/draw.c` (at_/at__ labels)
 - [x] `FillNT_with_Grey` (ASM:2280) → `fill_nt_with_grey()` в `game/draw.c` (at_ label)
@@ -214,7 +214,7 @@
 ## Sprite buffer
 
 - [x] `Draw_WholeSpr` (ASM:4426) → `draw_whole_spr()` в `game/draw.c`
-- [x] `SaveSprTo_SprBuffer` (ASM:4375) → `save_spr_to_spr_buffer()` в `game/draw.c` (Skip_Attrib label, убран лишний bounds-check и редундантный `goto Skip_Attrib`)
+- [x] `SaveSprTo_SprBuffer` (ASM:4356) → `save_spr_to_spr_buffer()` в `game/draw.c` (Skip_Attrib label, убран лишний bounds-check и редундантный `goto Skip_Attrib`)
 - [x] `Indexed_SaveSpr` (ASM:4396) → `indexed_save_spr()` в `game/draw.c` (убран лишний `&3`)
 - [x] `Spr_TileIndex_Add` (ASM:4413) → `spr_tile_index_add()` в `game/draw.c` (убран лишний `&3`)
 - [x] `Spr_Invisible` (ASM:4446) → `spr_invisible()` в `game/draw.c`
@@ -236,12 +236,12 @@
 - [x] `Save_Str_To_ScrBuffer` (ASM:3635) → `save_str_to_scr_buffer()` в `game/draw.c` (at_/at__/at___ labels, BMI через (int8_t)<0)
 - [x] `PtrToNonzeroStrElem` (ASM:4135) → `ptr_to_nonzero_str_elem()` в `game/draw.c` — все 4 ASM-метки сохранены (`PtrToNonzeroStrElem`/`at_`/`at__`/`at___`); при `$FF`-терминаторе откатывает указатель на 2 байта при `Tmp_CharIndexBase==0` (для title HI-score: «00» при score=0) или на 1 байте иначе (для жизней / уровня: «0»). ASM-fallthrough из первого `DEX/DEY` во второй сохранён через падение исполнения. **C-port хелпер** `save_aligned_str_to_scr_buffer()` оборачивает связку «PtrToNonzeroStrElem → Save_Str_To_ScrBuffer»: в ASM CPU-регистр X служит счётчиком display-колонки и инкрементится внутри `PtrToNonzeroStrElem` через INX; в C регистра нет, поэтому хелпер вычисляет `skip = p - base_str` и передаёт `col + skip` в `save_str_to_scr_buffer`. Не самостоятельная ASM-функция.
 - [x] `Num_To_NumString` (ASM:4291) → `num_to_num_string()` в `game/draw.c` (метка `at_` для value==0 ветки; `Temp` сохранён как глобал per ASM `STA Temp`)
-- [x] `ByteTo_Num_String` (ASM:4339) → `byte_to_num_string()` в `game/draw.c` (метки `Check_Max`/`exit_`; десятичное разложение через цикл вычитания 10 с goto)
+- [x] `ByteTo_Num_String` (ASM:4333) → `byte_to_num_string()` в `game/draw.c` (метки `Check_Max`/`exit_`; десятичное разложение через цикл вычитания 10 с goto)
 - [x] `Null_8Bytes_String` (ASM:4316) → `null_8bytes_string()` в `game/draw.c` (memset(0,7)+str[7]=$FF)
 - [x] `StaffStr_Store` (ASM:3340) → `staff_str_store()` в `game/reset.c` (at_ label, DEX/BPL)
-- [x] `StaffStr_Check` (ASM:3368) → `staff_str_check()` в `game/reset.c` (at_/ColdBoot labels)
-- [x] `Draw_Char` (ASM:4026) → `draw_char()` в `game/draw.c` (Add_10/at_/NextByte/Next_Bit/Empty_Pixel/pixelProcessed labels)
-- [x] `Draw_BrickStr` (ASM:4074) → `draw_brick_str()` в `game/draw.c` (New_Char/EOS labels)
+- [x] `StaffStr_Check` (ASM:3356) → `staff_str_check()` в `game/reset.c` (at_/ColdBoot labels)
+- [x] `Draw_Char` (ASM:3974) → `draw_char()` в `game/draw.c` (Add_10/at_/NextByte/Next_Bit/Empty_Pixel/pixelProcessed labels)
+- [x] `Draw_BrickStr` (ASM:4052) → `draw_brick_str()` в `game/draw.c` (New_Char/EOS labels)
 
 ## Bonus
 
@@ -265,26 +265,26 @@
 - [x] `Sound_Stop` (ASM:7315) → `sound_stop()` в `game/sound_engine.c` — метки `at_`/`at__` (= ASM `@_`/`@__`); чистит `Sound_DataBlocks[i*8]` и `Sound_PlaybackState[i]` для 28 слотов
 - [x] `Play_Sound` (ASM:7349) → `play_sound()` в `game/sound_engine.c` — все 22 метки сохранены 1-в-1 с ASM (`skip`, `clearChannels`, `loopChannels`, `playLoop`, `gt5`, `writeToRegistersLoop`, `endProcessing`, `skip_2`, `SilencingLoop`, `skipSilencing`, `mainProcessingLoop`, `advanceToNextSlot`, `nextSlot`, `handleDurationCountdown`, `initializeNewSound`, `loadSoundPtr`, `readNextCommandByte`, `processFrequencyLookup`, `loopSoundTemp`, `skip_3`, `handleNote`, `specialCommand`); поддержка `Sound_CurrentData_Ptr` опущена (C использует `slot*8`-индексацию)
 - [x] `Play_Snd_Move` (ASM:4523) → `play_snd_move()` в **`game/battle_screen.c`** (не sound_engine.c!) — был инвертирован `BEQ No_MoveSound` (`!= 0` вместо `== 0`), исправлено: теперь корректно стартует/глушит звук движения в зависимости от `Snd_Move` и `detect_motion`
-- [x] `Load_Snd_Ptr` (ASM:7769) → `load_snd_ptr()` в `game/sound_engine.c` — заменено на C-указатель `s_snd_data_ptr` вместо 16-битного `Sound_DataPtr`, функционально эквивалентно
-- [x] `Sound_LoadNextByte` (ASM:7784) → `sound_load_next_byte()` в `game/sound_engine.c` — читает `blk[5]`, берёт байт по data_ptr, инкрементит `blk[5]`
-- [x] `Sound_DispatchCommand` (ASM:7803) → `sound_dispatch_command()` в `game/sound_engine.c` — ASM-трюк inline jump table за `JSR` (PLA-PLA от return address) заменён на массив `sound_command_jump_table[18]` с `bool`-возвратом (`true` = `JMP readNextCommandByte`, `false` = `JMP advanceToNextSlot`)
-- [x] `Sound_Command_StopReset` (ASM:7622) → `sound_command_stop_reset()` — `return false` ≡ `JMP advanceToNextSlot`
-- [x] `Sound_Command_SetDutyCycle` (ASM:7640) → `sound_command_set_duty_cycle()` — `blk[1] = (blk[1] & 0x3F) | b`
-- [x] `Sound_Command_SetVolume` (ASM:7654) → `sound_command_set_volume()` — `blk[1] = (blk[1] & 0xC0) | b`
-- [x] `Sound_Command_SetVolumeAlt` (ASM:7668) → `sound_command_set_volume_alt()` — `AND #Sound_CurrentData_Ptr` это артефакт дизассемблера, реальный байт `$C0` (как в SetVolume)
-- [x] `Sound_Command_SetSweep` (ASM:7682) → `sound_command_set_sweep()` — `blk[2] = b`
-- [x] `Sound_Command_SetTimerHigh` (ASM:7692) → `sound_command_set_timer_high()` — `blk[4] = b`
-- [x] `Sound_Command_SetDutyVolume` (ASM:7702) → `sound_command_set_duty_volume()` — `blk[1] = b`
-- [x] `Sound_Command_ClearCounters` (ASM:7712) → `sound_command_clear_counters()` — сброс трёх `Sound_LoopCounter*`
-- [x] `Sound_Command_LoopCount0` (ASM:7726) → `sound_command_loop_count0()` — внутренняя метка `equal0:` сохранена; INC+CMP, если counter≠target → `return sound_command_jump_to_offset()`, иначе reset+fallthrough на `sound_command_advance_pointer()`. ASM-трюк `.BYTE $2C` (общая точка входа через BIT-skip) невозможен в C — развёрнут в три отдельные C-функции
-- [x] `Sound_Command_LoopCount1` (ASM:7730) → `sound_command_loop_count1()` — копия с `Sound_LoopCounter1`
-- [x] `Sound_Command_LoopCount2` (ASM:7734) → `sound_command_loop_count2()` — копия с `Sound_LoopCounter2`
-- [x] `Sound_Command_AdvancePointer` (ASM:7746) → `sound_command_advance_pointer()` — `blk[5]++` (LDY #5; LDA; ADC #1; STA)
-- [x] `Sound_Command_JumpToOffset` (ASM:7754) → `sound_command_jump_to_offset()` — `blk[5] = sound_load_next_byte()`
+- [x] `Load_Snd_Ptr` (ASM:7747) → `load_snd_ptr()` в `game/sound_engine.c` — заменено на C-указатель `s_snd_data_ptr` вместо 16-битного `Sound_DataPtr`, функционально эквивалентно
+- [x] `Sound_LoadNextByte` (ASM:7762) → `sound_load_next_byte()` в `game/sound_engine.c` — читает `blk[5]`, берёт байт по data_ptr, инкрементит `blk[5]`
+- [x] `Sound_DispatchCommand` (ASM:7781) → `sound_dispatch_command()` в `game/sound_engine.c` — ASM-трюк inline jump table за `JSR` (PLA-PLA от return address) заменён на массив `sound_command_jump_table[18]` с `bool`-возвратом (`true` = `JMP readNextCommandByte`, `false` = `JMP advanceToNextSlot`)
+- [x] `Sound_Command_StopReset` (ASM:7605) → `sound_command_stop_reset()` — `return false` ≡ `JMP advanceToNextSlot`
+- [x] `Sound_Command_SetDutyCycle` (ASM:7623) → `sound_command_set_duty_cycle()` — `blk[1] = (blk[1] & 0x3F) | b`
+- [x] `Sound_Command_SetVolume` (ASM:7637) → `sound_command_set_volume()` — `blk[1] = (blk[1] & 0xC0) | b`
+- [x] `Sound_Command_SetVolumeAlt` (ASM:7651) → `sound_command_set_volume_alt()` — `AND #Sound_CurrentData_Ptr` это артефакт дизассемблера, реальный байт `$C0` (как в SetVolume)
+- [x] `Sound_Command_SetSweep` (ASM:7665) → `sound_command_set_sweep()` — `blk[2] = b`
+- [x] `Sound_Command_SetTimerHigh` (ASM:7675) → `sound_command_set_timer_high()` — `blk[4] = b`
+- [x] `Sound_Command_SetDutyVolume` (ASM:7685) → `sound_command_set_duty_volume()` — `blk[1] = b`
+- [x] `Sound_Command_ClearCounters` (ASM:7695) → `sound_command_clear_counters()` — сброс трёх `Sound_LoopCounter*`
+- [x] `Sound_Command_LoopCount0` (ASM:7709) → `sound_command_loop_count0()` — внутренняя метка `equal0:` сохранена; INC+CMP, если counter≠target → `return sound_command_jump_to_offset()`, иначе reset+fallthrough на `sound_command_advance_pointer()`. ASM-трюк `.BYTE $2C` (общая точка входа через BIT-skip) невозможен в C — развёрнут в три отдельные C-функции
+- [x] `Sound_Command_LoopCount1` (ASM:7713) → `sound_command_loop_count1()` — копия с `Sound_LoopCounter1`
+- [x] `Sound_Command_LoopCount2` (ASM:7717) → `sound_command_loop_count2()` — копия с `Sound_LoopCounter2`
+- [x] `Sound_Command_AdvancePointer` (ASM:7729) → `sound_command_advance_pointer()` — `blk[5]++` (LDY #5; LDA; ADC #1; STA)
+- [x] `Sound_Command_JumpToOffset` (ASM:7737) → `sound_command_jump_to_offset()` — `blk[5] = sound_load_next_byte()`
 
 ## Levels / misc
 
-- [x] `Load_Level` (ASM:7910) → `load_level()` в `game/levels.c` (все ASM-метки: `begin`/`at_`/`at__`/`loop`/`loop_2`/`drawTsa`; `Inc_Ptr_on_A #$5B` → `level_ptr += LEVEL_SIZE`)
+- [x] `Load_Level` (ASM:7888) → `load_level()` в `game/levels.c` (все ASM-метки: `begin`/`at_`/`at__`/`loop`/`loop_2`/`drawTsa`; `Inc_Ptr_on_A #$5B` → `level_ptr += LEVEL_SIZE`)
 - [x] `Zero_Page_Viewer` (ASM:1395) → `zero_page_viewer()` в `game/draw.c` (debug, не вызывается; метки `SkipInc_Zero_Page_Viewer`/`ScipDec_Zero_Page_Viewer`/`End_Zero_Page_Viewer` сохранены; чтение zero-page заглушено нулём — в C-порту нет реального ZP mapping)
 
 ---

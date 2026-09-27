@@ -12,7 +12,7 @@ void explode_handle(uint8_t slot);
 void misc_status_handle(uint8_t slot);
 /* ASM: Get_RandomStatus (4920) */
 void get_random_status(uint8_t slot);
-/* ASM: Check_TileReach (5022) */
+/* ASM: Check_TileReach (4794) */
 void check_tile_reach(uint8_t slot);
 /* ASM: Compare_Block_X */
 uint8_t compare_block_x(uint8_t a, uint8_t b);
@@ -22,9 +22,9 @@ uint8_t compare_block_y(uint8_t a, uint8_t b);
 void check_obj(uint8_t slot);
 /* ASM: Save_AI_ToStatus (4999) */
 void save_ai_to_status(uint8_t slot);
-/* ASM: Aim_HQ (5117) */
+/* ASM: Aim_HQ (4993) */
 void aim_hq(uint8_t slot);
-/* ASM: Aim_ScndPlayer (5144) */
+/* ASM: Aim_ScndPlayer (4986) */
 void aim_scnd_player(uint8_t slot);
 /* ASM: Aim_FirstPlayer (4979) */
 void aim_first_player(uint8_t slot);

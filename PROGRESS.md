@@ -13,6 +13,7 @@ _Обновлено: 2026-09-27_
 
 ## Последние исправления (см. `git log`)
 
+- Номера строк ASM приведены к эталону (romhack `Battle City (J).asm`, 8056 строк): исправлено 89 ссылок в `PORTING.md` и `/* ASM: … */` в `src/game/`; `Save_To_VRAM` → `Save_to_VRAM`; `draw_title_cursor` помечен как C-port helper (ASM-метки нет). Диапазоны `(ASM:x–y)` в списке goto-якорей были верны. Номера внутренних меток в свободном тексте (`line 3014` и т.п.) не проверялись.
 - `Null_Status`: номер строки `XXXX`/`6331` → `6315` (сверено с upstream; 6331 — это `Rise_TankStatus_Bit`).
 - Удалён `#include "strings.h"` из 7 файлов `src/game/`: такого файла в проекте никогда не было (с initial commit), подхватывался системный POSIX `<strings.h>`, ни одна его функция не использовалась.
 - `-Wpedantic` «label before declaration» в `ice_move` и `string_to_screen_buffer`/`save_str_to_scr_buffer`: объявления вынесены перед метками, CI без `-Wno-error=pedantic`.
@@ -22,10 +23,8 @@ _Обновлено: 2026-09-27_
 
 ## Известные проблемы
 
-- Номера строк ASM: 71 из ~290 ссылок (`PORTING.md` + `/* ASM: … */` в `src/game/*.h`) не совпадают с `^Label:` в upstream `Battle City (J).asm` (romhack, 8056 строк; в `AGENTS.md` указано 8079 — возможно, локальная копия отличается). Примеры: `Button_To_DirectionIndex` 6644 → 6373, `Hide_All_Bullets` 6315 → 6301.
 - `zero_page_viewer()` — отладочная функция, чтение ZP заглушено нулём (в C нет реального ZP mapping).
 
 ## Следующие шаги
 
-- [ ] Сверить и исправить 71 расходящийся номер строки ASM (после проверки, какая версия `.asm` — эталон).
 - [ ] Повторная выборочная сверка функций, где были недавние баги (коллизии, AI, звук), с ASM.

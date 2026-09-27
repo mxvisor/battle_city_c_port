@@ -116,7 +116,7 @@ exit_:
     }
 }
 
-/* ASM: Update_Screen (4125). Бежит по Screen_Buffer, выгружая записи
+/* ASM: Update_Screen (4095). Бежит по Screen_Buffer, выгружая записи
  * формата [hi, lo, data..., $FF] в PPU через ppu_data_write.
  *
  * ВАЖНО: `$FF` может встретиться как данные (например, attribute-байт со

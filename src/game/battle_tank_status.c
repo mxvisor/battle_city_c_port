@@ -165,7 +165,7 @@ End_Misc_Status_Handle:
     return;
 }
 
-/* ASM: Get_RandomStatus (4910). 50% — переходит в Get_RandomAim. Иначе с равной
+/* ASM: Get_RandomStatus (4920). 50% — переходит в Get_RandomAim. Иначе с равной
  * вероятностью INC/DEC направления и установка статуса в $A0..$A3 (диспетч в
  * check_tile_reach на следующем тике). КРИТИЧНО: ORA #Tank_Status — это
  * `ORA #$A0` (zp-адрес Tank_Status = $A0), а не сохранение старших бит. */
@@ -246,7 +246,7 @@ End_Load_AIStatus:
     return AI_Status[y_index];
 }
 
-/* ASM: Compare_Block_X (4953). CMP Block_X; BCC @_; SEC; SBC #1; @_: RTS.
+/* ASM: Compare_Block_X (4952). CMP Block_X; BCC @_; SEC; SBC #1; @_: RTS.
  * Возвращает a-1 если a >= Block_X, иначе a. */
 uint8_t compare_block_x(uint8_t a, uint8_t b) {
     /* CMP Block_X; BCC @_ */
