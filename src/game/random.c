@@ -24,6 +24,7 @@ static void init_zp_bytes(void) {
  */
 uint8_t get_random_a(void) {
     uint8_t val;
+    uint16_t sum;
     if (zp_initialized == 0u) init_zp_bytes();
 
     /* LDA Random_Lo; ASL; ASL; ASL — A = Random_Lo*8 */
@@ -32,10 +33,11 @@ uint8_t get_random_a(void) {
     /* SEC; SBC Random_Lo — A = (Random_Lo*8) - Random_Lo = Random_Lo*7 */
     val = (uint8_t)(val - Random_Lo);
     /* CLC; ADC Seconds_Counter */
-    val = (uint8_t)(val + Seconds_Counter);
-    /* INC Random_Hi; LDX Random_Hi; ADC Temp,X */
+    sum = (uint16_t)val + Seconds_Counter;
+    /* INC Random_Hi; LDX Random_Hi; ADC Temp,X — БЕЗ CLC: перенос из
+     * предыдущего ADC входит в сумму (INC/LDX флаг C не трогают). */
     Random_Hi++;
-    val = (uint8_t)(val + zp_bytes[Random_Hi]);
+    val = (uint8_t)((uint8_t)sum + zp_bytes[Random_Hi] + (sum >> 8));
     /* STA Random_Lo; PLA; TAX; LDA Random_Lo; RTS */
     Random_Lo = val;
     return Random_Lo;

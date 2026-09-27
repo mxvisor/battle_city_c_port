@@ -258,7 +258,7 @@
 ## Input / Random
 
 - [x] `Read_Joypads` (ASM:3571) → `read_joypads()` в `game/nmi.c` — внешний цикл `at__` по X=1→0 (P2 затем P1) и формула `Differ = ~prev & now` сохранены 1-в-1; hardware-strobe `JOYPAD_PORT1` и 8-итерационный bit-loop `@_` (`LDA $4016,X; AND #3; CMP #1; ROR Temp`) физически невозможны в C — заменены на вызов SDL-опроса, возвращающего все 8 бит сразу. Архитектурное расхождение, помеченное в комментарии
-- [x] `Get_Random_A` (ASM:3226) → `get_random_a()` в `game/random.c` — алгоритм 1-в-1: `Random_Lo = (Random_Lo*7) + Seconds_Counter + zp[Random_Hi]` через `ASL ASL ASL; SEC SBC`. Индексированный доступ `ADC Temp,X` (где X = Random_Hi) к zero-page реализован через локальный `static uint8_t zp_bytes[256]` (детерминированный сид `i*31+17`) — полноценный union по всем zp-переменным не делается (см. AGENTS.md/PORTING.md прим. ниже)
+- [x] `Get_Random_A` (ASM:3226) → `get_random_a()` в `game/random.c` — алгоритм 1-в-1: `Random_Lo = (Random_Lo*7) + Seconds_Counter + zp[Random_Hi]` через `ASL ASL ASL; SEC SBC`. Индексированный доступ `ADC Temp,X` (где X = Random_Hi) к zero-page реализован через локальный `static uint8_t zp_bytes[256]` (детерминированный сид `i*31+17`) — полноценный union по всем zp-переменным не делается (см. AGENTS.md/PORTING.md прим. ниже) — **исправлено**: перенос из `ADC Seconds_Counter` входит во второй `ADC Temp,X` (в ASM нет `CLC` между ними)
 
 ## Sound engine
 
