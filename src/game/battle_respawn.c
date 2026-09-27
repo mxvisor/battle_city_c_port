@@ -110,9 +110,8 @@ Make_BonusEnemy:
 
 exit_:
     Tank_Status[x] = 0xF0u;
-    Block_Y = Tank_Y[x];
-    Block_X = Tank_X[x];
-    draw_tsa_block(0x0Fu);
+    /* LDY Tank_Y,X; LDA Tank_X,X; TAX; LDA #$F; JSR Draw_TSABlock */
+    draw_tsa_block(0x0Fu, Tank_X[x], Tank_Y[x]);
 }
 
 const uint8_t Respawn_Status[8] = { 0xA0, 0xA0, 0xA2, 0xA2, 0xA2, 0xA2, 0xA2, 0xA2 };

@@ -18,12 +18,11 @@ uint8_t check_object(void) {
 
 /* ASM: Draw_Destroyed_Brick (3753)
    Clears the Temp-masked quarter-bits from the tile, then schedules tile draw. */
-void draw_destroyed_brick(void) {
+void draw_destroyed_brick(uint8_t x) {
     uint16_t addr = (uint16_t)LowPtr_Byte | ((uint16_t)HighPtr_Byte << 8);
     addr &= 0x3FFu;
-    uint8_t tile = (uint8_t)(NT_Buffer[addr] & ~Temp);
-    Spr_TileIndex = tile;       /* ASM: A = modified tile, STA (LowPtr),Y via Draw_Tile */
-    draw_tile();                /* writes Spr_TileIndex back to NT_Buffer and Screen_Buffer */
+    /* LDA Temp; EOR #$FF; AND (LowPtr_Byte),Y; JSR Draw_Tile (X — от вызывающего) */
+    draw_tile((uint8_t)(NT_Buffer[addr] & ~Temp), x);
 }
 
 /* ASM: BulletToTank_Impact_Handle (6731) */
@@ -406,8 +405,8 @@ at_:
         if ((Bullet_Property[slot] & 0x02u) == 0u) {
             goto at__;
         }
-        Spr_TileIndex = 0u;
-        draw_tile();
+        /* LDA #0; JSR Draw_Tile (X = Counter) */
+        draw_tile(0u, slot);
         Snd_Brick_Ricochet = 1u;
         goto BulletToObject_Return0;
 
@@ -422,7 +421,7 @@ at__:
     }
 
 BulletToObject_Return1:
-    draw_destroyed_brick();
+    draw_destroyed_brick(slot); /* X = Counter */
     return 1;
 
 Armored_Wall:

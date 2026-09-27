@@ -31,69 +31,74 @@ static const uint8_t TSA_data_start[64] = {
     0x00, 0x00, 0x00, 0x00
 };
 
-void draw_tile(void) {
+void draw_tile(uint8_t a, uint8_t x) {
     uint16_t addr = LowPtr_Byte | (HighPtr_Byte << 8);
 
-    /* STA (LowPtr_Byte),Y
-       Original ASM stores A into the nametable address pointed by LowPtr_Byte/HighPtr_Byte.
-       In the emulator this is represented by NT_Buffer. */
-    NT_Buffer[addr & 0x3FF] = Spr_TileIndex;
+    /* STA (LowPtr_Byte),Y — Y=0; NT_Buffer — RAM-копия nametable */
+    NT_Buffer[addr & 0x3FF] = a;
 
-    /* STX Spr_X - preserve incoming X register for caller state; not needed in C */
-    
+    /* STX Spr_X — ASM сохраняет X в Spr_X (ZP-переменная!) и в конце
+     * восстанавливает X через LDX Spr_X: побочный эффект Spr_X = X остаётся. */
+    Spr_X = x;
+
     /* LDX ScrBuffer_Pos */
     uint8_t write_pos = ScrBuffer_Pos;
 
-    /* LDA HighPtr_Byte / CLC / ADC #$1C */
-    Screen_Buffer[write_pos++] = HighPtr_Byte + PPU_Addr_Ptr;
+    /* LDA HighPtr_Byte; CLC; ADC #$1C — константа, не PPU_Addr_Ptr */
+    Screen_Buffer[write_pos++] = (uint8_t)(HighPtr_Byte + 0x1Cu);
+    /* LDA LowPtr_Byte */
     Screen_Buffer[write_pos++] = LowPtr_Byte;
-
-    /* LDA (LowPtr_Byte),Y — read back the same nametable byte and append it to screen buffer */
+    /* LDA (LowPtr_Byte),Y */
     Screen_Buffer[write_pos++] = NT_Buffer[addr & 0x3FF];
+    /* LDA #$FF */
     Screen_Buffer[write_pos++] = 0xFF;
 
-    /* STX ScrBuffer_Pos */
+    /* STX ScrBuffer_Pos; LDX Spr_X */
     ScrBuffer_Pos = write_pos;
-
-    /* LDX Spr_X - restore saved X register for caller state; not needed in C */
 }
 
-void draw_tsa_block(uint8_t block_num) {
-    TSA_BlockNumber = block_num;
-    Spr_X = Block_X >> 3;
-    Spr_Y = Block_Y >> 3;
-    
-    TSA_Pal = TSABlock_PalNumber[block_num];
+/* ASM: Draw_TSABlock (3928). Координаты приходят в регистрах X/Y (вызывающие
+ * передают Tank_X/Tank_Y или Block_X/Block_Y), блок — в A. */
+void draw_tsa_block(uint8_t block_num, uint8_t x, uint8_t y) {
+    uint8_t idx;
+
+    /* PHA; STA Temp */
+    Temp = block_num;
+    /* JSR XnY_div_8; STX Spr_X; STY Spr_Y */
+    xny_div_8(&x, &y);
+    Spr_X = x;
+    Spr_Y = y;
+    /* LDY Temp; LDA TSABlock_PalNumber,Y; STA TSA_Pal */
+    TSA_Pal = TSABlock_PalNumber[Temp];
+    /* LDY Spr_Y; JSR AttribToScrBuffer */
     attrib_to_scr_buffer();
-    
-    uint8_t y = Spr_Y & 0xFE;
-    uint8_t x = Spr_X & 0xFE;
-    coords_to_ram_pos(x, y);
-    
-    uint16_t tsa_idx = (uint16_t)block_num << 2;
-    
-    Spr_TileIndex = TSA_data_start[tsa_idx++];
-    draw_tile();
-    
+    /* LDA Spr_Y; AND #$FE; TAY; LDA Spr_X; AND #$FE; TAX; JSR CoordsToRAMPos */
+    coords_to_ram_pos((uint8_t)(Spr_X & 0xFEu), (uint8_t)(Spr_Y & 0xFEu));
+
+    /* PLA; ASL A; ASL A; TAX */
+    idx = (uint8_t)(block_num << 2);
+    /* LDA TSA_data_start,X; INX; JSR Draw_Tile */
+    idx++;
+    draw_tile(TSA_data_start[(uint8_t)(idx - 1u)], idx);
+    /* LDA #1; JSR Inc_Ptr_on_A */
     inc_ptr_on_a(1);
-    Spr_TileIndex = TSA_data_start[tsa_idx++];
-    draw_tile();
-    
+    idx++;
+    draw_tile(TSA_data_start[(uint8_t)(idx - 1u)], idx);
+    /* LDA #$1F; JSR Inc_Ptr_on_A */
     inc_ptr_on_a(0x1F);
-    Spr_TileIndex = TSA_data_start[tsa_idx++];
-    draw_tile();
-    
+    idx++;
+    draw_tile(TSA_data_start[(uint8_t)(idx - 1u)], idx);
+    /* LDA #1; JSR Inc_Ptr_on_A */
     inc_ptr_on_a(1);
-    Spr_TileIndex = TSA_data_start[tsa_idx++];
-    draw_tile();
+    idx++;
+    draw_tile(TSA_data_start[(uint8_t)(idx - 1u)], idx);
 }
-void draw_ptr_tile(void) {
-    // This is never used
-    // LDA	Temp		; This is never used
-    // ORA	(LowPtr_Byte),Y
-    // JSR	Draw_Tile
-    (void)Temp;
-    draw_tile();
+
+/* ASM: DrawPtrTile (3781) — «This is never executed». */
+void draw_ptr_tile(uint8_t x) {
+    uint16_t addr = LowPtr_Byte | (HighPtr_Byte << 8);
+    /* LDA Temp; ORA (LowPtr_Byte),Y; JSR Draw_Tile */
+    draw_tile((uint8_t)(Temp | NT_Buffer[addr & 0x3FF]), x);
 }
 /* ASM: Inc_Ptr_on_A (3847). CLC; ADC LowPtr_Byte; STA LowPtr_Byte; BCC @_; INC HighPtr_Byte. */
 void inc_ptr_on_a(uint8_t a) {

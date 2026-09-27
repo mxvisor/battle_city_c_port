@@ -7,9 +7,8 @@
 #include "zeropage.h"
 
 void draw_tsa_on_tank(void) {
-    Block_X = Tank_X[0];
-    Block_Y = Tank_Y[0];
-    draw_tsa_block(TSA_BlockNumber & 0x0F);
+    /* LDA TSA_BlockNumber; AND #$F; LDX Tank_X; LDY Tank_Y; JSR Draw_TSABlock */
+    draw_tsa_block(TSA_BlockNumber & 0x0F, Tank_X[0], Tank_Y[0]);
 }
 
 /* ASM: Construction (349). Режим конструктора: танк ходит по полю,

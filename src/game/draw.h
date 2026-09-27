@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 
-/* ASM: Draw_Tile (3821) */
-void draw_tile(void);
-/* ASM: Draw_TSABlock (3928) */
-void draw_tsa_block(uint8_t block_num);
-/* ASM: DrawPtrTile (3781) */
-void draw_ptr_tile(void);
+/* ASM: Draw_Tile (3821). a — регистр A (тайл), x — регистр X (уходит в Spr_X). */
+void draw_tile(uint8_t a, uint8_t x);
+/* ASM: Draw_TSABlock (3928). x, y — регистры X/Y (пиксельные координаты). */
+void draw_tsa_block(uint8_t block_num, uint8_t x, uint8_t y);
+/* ASM: DrawPtrTile (3781) — в ASM не вызывается. x — регистр X. */
+void draw_ptr_tile(uint8_t x);
 /* ASM: Inc_Ptr_on_A (3847) */
 void inc_ptr_on_a(uint8_t a);
 /* ASM: Draw_Char (3974) */

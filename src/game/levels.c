@@ -381,7 +381,7 @@ loop_2: /* ASM: @loop_2 */
 
     /* @drawTsa: LDX Block_X / LDY Block_Y / JSR Draw_TSABlock */
 drawTsa: /* ASM: @drawTsa */
-    draw_tsa_block(tsa);
+    draw_tsa_block(tsa, Block_X, Block_Y);
 
     /* LDA #0 / STA ScrBuffer_Pos */
     ScrBuffer_Pos = 0;

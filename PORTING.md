@@ -192,10 +192,10 @@
 ## Sprites / Tiles / NT-buffer helpers
 
 - [x] `Draw_TSA_On_Tank` (ASM:1273) → `draw_tsa_on_tank()` в `game/construction_screen.c`
-- [x] `Draw_TSABlock` (ASM:3928) → `draw_tsa_block()` в `game/draw.c` (block_num как param заменяет PHA/PLA)
-- [x] `Draw_Tile` (ASM:3821) → `draw_tile()` в `game/draw.c` (использует PPU_Addr_Ptr вместо литерала $1C)
-- [x] `Draw_Destroyed_Brick` (ASM:3753) → `draw_destroyed_brick()` в `game/battle_collide.c`
-- [x] `DrawPtrTile` (ASM:3781) → `draw_ptr_tile()` в `game/draw.c` (ASM-комментарий "never used"; ORA-логика опущена)
+- [x] `Draw_TSABlock` (ASM:3928) → `draw_tsa_block()` в `game/draw.c` (block_num как param заменяет PHA/PLA) — **исправлено**: координаты — параметры (регистры X/Y), `STA Temp` вместо записи `TSA_BlockNumber`; вызывающие больше не пишут `Block_X/Block_Y`
+- [x] `Draw_Tile` (ASM:3821) → `draw_tile()` в `game/draw.c` (использует PPU_Addr_Ptr вместо литерала $1C) — **исправлено**: тайл и X передаются параметрами (`draw_tile(a, x)`), `STX Spr_X` моделируется, `ADC #$1C` — константа (было `+ PPU_Addr_Ptr`); `Spr_TileIndex` больше не портится
+- [x] `Draw_Destroyed_Brick` (ASM:3753) → `draw_destroyed_brick()` в `game/battle_collide.c` — X передаётся параметром (`draw_destroyed_brick(x)`)
+- [x] `DrawPtrTile` (ASM:3781) → `draw_ptr_tile()` в `game/draw.c` (ASM-комментарий "never used"; ORA-логика опущена) — **исправлено**: `LDA Temp; ORA (ptr),Y` (было: мусорный `Spr_TileIndex`); в ASM не вызывается
 - [x] `Check_Object` (ASM:3742) → `check_object()` в `game/battle_collide.c`
 - [x] `NT_Buffer_Process_XOR` (ASM:3764) → `nt_buffer_process_xor()` в `game/draw.c` (at_ skip label)
 - [x] `NT_Buffer_Process_OR` (ASM:3791) → `nt_buffer_process_or()` в `game/draw.c` (at__ skip label)

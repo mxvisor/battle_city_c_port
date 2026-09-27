@@ -10,7 +10,7 @@ void bullet_to_bullet_impact_handle(void);
 /* ASM: BulletToObject_Impact_Handle (6662) */
 uint8_t bullet_to_object_impact_handle(uint8_t bullet_slot);
 /* ASM: Draw_Destroyed_Brick (3753) */
-void draw_destroyed_brick(void);
+void draw_destroyed_brick(uint8_t x);
 /* ASM: Check_Object (3742) */
 uint8_t check_object(void);
 
