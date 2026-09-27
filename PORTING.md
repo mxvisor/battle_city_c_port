@@ -441,12 +441,12 @@ ASM-таблица строк (ASM:3084–3159). Каждая строка за�
 
 Используется как «магический маркер» для определения тёплого ребута:
 
-- `StaffStr_Store` (3340) копирует её в RAM (`StaffString_RAM`) после полной инициализации.
-- `StaffStr_Check` (3356) при следующем reset сравнивает RAM-копию с ROM-оригиналом:
+- `StaffStr_Store` (3340) копирует в RAM (`StaffString_RAM`, 16 байт) только первые 16 байт — `"RYOUITI OOKUBO  "` (`LDX #$F … DEX / BPL`) — после полной инициализации.
+- `StaffStr_Check` (3356) при следующем reset сравнивает те же 16 байт RAM-копии с началом `StaffString` в ROM; остальные 32 байта нигде не читаются:
   - совпали → **HotBoot**: пропустить сброс hi-score (значения 1P/2P сохраняются, ColdBoot-инициализация Player1_Lives и т.д. пропускается);
   - не совпали → **ColdBoot**: первая загрузка / физический ремонт картриджа — обнулить всё.
 
-В C-порту хранится в [reset.c:12](src/game/reset.c#L12) как `static const uint8_t StaffString[48]`. `StaffString_RAM` — обычный bss-массив.
+В C-порту хранится в [reset.c:11](src/game/reset.c#L11) как `static const uint8_t StaffString[48]`. `StaffString_RAM` — обычный bss-массив.
 
 
 
