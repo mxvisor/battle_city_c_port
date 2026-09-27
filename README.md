@@ -42,6 +42,8 @@ Requires **SDL3** (library + headers) installed on the system.
 | `--region pal` | PAL timing. CPU 1.662 MHz, 50 FPS |
 | `--apu-filters` | Enable NES hardware filter chain: HPF 90 Hz → HPF 440 Hz → LPF 14 kHz. Without flag — simple DC-removal HPF (~28 Hz) |
 | `--scale N` | Window scale factor (1–10, default: 1) |
+| `--test-frames N` | Deterministic headless run for N frames (no SDL, no threads) printing frame/APU hashes; see `tests/regression/run.sh` |
+| `--test-input F`, `--test-every K`, `--test-out F`, `--test-dump DIR` | Test mode: input script, checkpoint interval (default 60), output file, BMP frame dumps |
 
 Example:
 ```bash
@@ -57,6 +59,15 @@ Example:
 | `Right Shift` | Select |
 | `Enter` | Start |
 | `↑ ↓ ← →` | D-pad |
+
+## Regression tests
+
+```bash
+tests/regression/run.sh build/battle_city          # or: ctest --test-dir build
+tests/regression/run.sh build/battle_city --update # regenerate golden hashes
+```
+
+Scenarios (`attract`, `play_1p`, `construction`) run in a deterministic mode: the game logic runs on the main thread and every NMI/VBlank wait executes one frame synchronously; power-on RAM uses a fixed seed and input comes from a script (`tests/regression/*.input`). Frame-buffer and APU-write hashes every 30 frames are compared with `tests/regression/golden/`. Set `DUMP_DIR=dir` to save BMP frames on mismatch.
 
 ## CHR Data
 
@@ -96,6 +107,7 @@ Load order: `chr.bin` → `chr.bmp` → embedded BMP.
 │       ├── chr_load.c/h     # CHR loading from file or embedded BMP
 │       └── poweron_randomize.c/h  # memory initialization at startup
 ├── build/                   # binary + compiled data
+├── tests/regression/        # frame-hash regression test: run.sh, input scripts, golden/
 ├── PORTING.md               # ported functions checklist
 ├── AGENTS.md                # agent guide: commands, map, pitfalls, porting rules
 ├── CLAUDE.md                # Claude Code entry point (imports AGENTS.md, PROGRESS.md)

@@ -127,7 +127,14 @@ static void apply_register_write(uint8_t reg, uint8_t value) {
 /* SPSC ring: single producer (CPU/emu thread), single consumer (audio callback).
    Write payload first, then publish new head with release-store so the consumer's
    acquire-load on head establishes happens-before with the payload write. */
+int apu_trace_enabled = 0;
+uint64_t apu_trace_hash = 0xCBF29CE484222325ull;
+
 static inline void ring_push(uint8_t reg, uint8_t value) {
+    if (apu_trace_enabled) {
+        apu_trace_hash = (apu_trace_hash ^ reg) * 0x100000001B3ull;
+        apu_trace_hash = (apu_trace_hash ^ value) * 0x100000001B3ull;
+    }
     unsigned int head = atomic_load_explicit(&ring_head, memory_order_relaxed);
     ring_buffer[head & RING_MASK].reg = reg;
     ring_buffer[head & RING_MASK].value = value;

@@ -42,6 +42,8 @@ cmake --build build
 | `--region pal` | PAL-тайминг. CPU 1.662 МГц, 50 FPS |
 | `--apu-filters` | Включить цепочку аппаратных фильтров NES: HPF 90 Hz → HPF 440 Hz → LPF 14 kHz. Без флага — простой DC-removal HPF (~28 Hz) |
 | `--scale N` | Масштаб окна (1–10, по умолчанию: 1) |
+| `--test-frames N` | Детерминированный headless-прогон на N кадров (без SDL и потоков) с выводом хэшей кадров/APU; см. `tests/regression/run.sh` |
+| `--test-input F`, `--test-every K`, `--test-out F`, `--test-dump DIR` | Тестовый режим: скрипт ввода, шаг контрольных точек (по умолчанию 60), файл вывода, BMP-дампы кадров |
 
 Пример:
 ```bash
@@ -57,6 +59,15 @@ cmake --build build
 | `Right Shift` | Select |
 | `Enter` | Start |
 | `↑ ↓ ← →` | D-pad |
+
+## Регрессионные тесты
+
+```bash
+tests/regression/run.sh build/battle_city          # или: ctest --test-dir build
+tests/regression/run.sh build/battle_city --update # пересоздать эталонные хэши
+```
+
+Сценарии (`attract`, `play_1p`, `construction`) идут в детерминированном режиме: игровая логика крутится в главном потоке, каждое ожидание NMI/VBlank синхронно выполняет один кадр; power-on RAM — с фиксированным seed, ввод — из скрипта (`tests/regression/*.input`). Хэши кадрового буфера и записей в APU каждые 30 кадров сравниваются с `tests/regression/golden/`. `DUMP_DIR=dir` — сохранить BMP-кадры при расхождении.
 
 ## CHR-данные
 
@@ -96,6 +107,7 @@ cmake --build build
 │       ├── chr_load.c/h     # загрузка CHR из файла или встроенного BMP
 │       └── poweron_randomize.c/h  # инициализация памяти при старте
 ├── build/                   # бинарник + скомпилированные данные
+├── tests/regression/        # регрессионный тест по кадрам: run.sh, сценарии ввода, golden/
 ├── PORTING.md               # чеклист портированных функций
 ├── AGENTS.md                # гайд для агентов: команды, карта, ловушки, правила портирования
 ├── CLAUDE.md                # точка входа Claude Code (импортирует AGENTS.md, PROGRESS.md)

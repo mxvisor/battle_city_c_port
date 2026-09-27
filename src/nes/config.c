@@ -72,6 +72,8 @@ void nes_init(const char **chr_paths) {
                 break;
             }
         }
+    } else {
+        chr_loaded = load_chr(NULL) != 0;  /* только встроенный BMP */
     }
     if (!chr_loaded) {
         fprintf(stderr, "Failed to load CHR data\n");

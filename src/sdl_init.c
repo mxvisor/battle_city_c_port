@@ -2,6 +2,7 @@
 #include "nes/config.h"
 #include "nes/apu_sim.h"
 #include "game/nmi.h"
+#include "test_mode.h"
 #include "version.h"
 #include <stdio.h>
 
@@ -40,11 +41,24 @@ static SDL_sem *vblank_sem = NULL;
 
 volatile int plat_running = 1;
 
-plat_sem_t plat_get_wake_sem(void) { return (plat_sem_t)wake_sem; }
-plat_sem_t plat_get_vblank_sem(void) { return (plat_sem_t)vblank_sem; }
+/* В тестовом режиме SDL-семафоров нет: возвращаем различимые маркеры. */
+static int test_wake_marker, test_vblank_marker;
 
-void plat_sem_wait(plat_sem_t sem) { SDL_SemWait((SDL_sem*)sem); }
-void plat_sem_post(plat_sem_t sem) { SDL_SemPost((SDL_sem*)sem); }
+plat_sem_t plat_get_wake_sem(void) {
+    return test_mode_active ? (plat_sem_t)&test_wake_marker : (plat_sem_t)wake_sem;
+}
+plat_sem_t plat_get_vblank_sem(void) {
+    return test_mode_active ? (plat_sem_t)&test_vblank_marker : (plat_sem_t)vblank_sem;
+}
+
+void plat_sem_wait(plat_sem_t sem) {
+    if (test_mode_active) { test_mode_sem_wait(); return; }
+    SDL_SemWait((SDL_sem*)sem);
+}
+void plat_sem_post(plat_sem_t sem) {
+    if (test_mode_active) return;
+    SDL_SemPost((SDL_sem*)sem);
+}
 
 uint32_t* sdl_get_pixels(void) { return pixels; }
 SDL_Renderer* sdl_get_renderer(void) { return renderer; }
@@ -192,6 +206,7 @@ void sdl_cleanup(void) {
 }
 
 uint8_t plat_poll_buttons_p1(void) {
+    if (test_mode_active) return test_mode_buttons(0);
     const key_state_t *keys = SDL_GetKeyboardState(NULL);
     uint8_t btns = 0;
     if (keys[SDL_SCANCODE_X]) btns |= 0x01;
@@ -206,5 +221,6 @@ uint8_t plat_poll_buttons_p1(void) {
 }
 
 uint8_t plat_poll_buttons_p2(void) {
+    if (test_mode_active) return test_mode_buttons(1);
     return 0;
 }

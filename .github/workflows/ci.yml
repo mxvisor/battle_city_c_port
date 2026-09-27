@@ -82,6 +82,17 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Regression test (frame hashes)
+        run: DUMP_DIR="$PWD/regression-dump" tests/regression/run.sh build/battle_city
+
+      - name: Upload mismatching frames
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-frames-${{ matrix.sdl }}-${{ matrix.build_type }}-${{ matrix.debug_screens }}
+          path: regression-dump/
+          if-no-files-found: ignore
+
       - name: Smoke test (headless, 10 s)
         env:
           SDL_VIDEODRIVER: dummy

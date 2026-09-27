@@ -9,10 +9,12 @@ _Обновлено: 2026-09-27_
 
 - Все **218/218** top-level ASM-функций портированы и отмечены `[x]` в `PORTING.md`.
 - Работает: title, construction, stage select, бой (1P/2P), demo, pts-screen, game over, hi-score, secret message; NTSC/PAL; SDL2 и SDL3.
-- Тестов нет. CI (GitHub Actions) — сборка SDL2/SDL3 × Release/Debug с `-Werror` (кроме `unused-label`) + headless smoke-запуск на 10 с.
+- Регрессионный тест по кадрам (`tests/regression/run.sh`, `ctest`): сценарии `attract` (титул + демо с ИИ, 3600 кадров), `play_1p` (Stage 1 с вводом, пауза, Game Over, очки, 4800), `construction` (редактор + бой на своей карте, 1800). Эталон одинаков для Release/Debug/SDL3.
+- CI (GitHub Actions) — сборка SDL2/SDL3 × Release/Debug с `-Werror` (кроме `unused-label`) + регрессионный тест + headless smoke-запуск на 10 с.
 
 ## Последние исправления (см. `git log`)
 
+- Добавлен детерминированный тестовый режим `--test-frames` (`src/test_mode.c`) и регрессионный тест по кадрам в CI.
 - Неиспользуемые ASM-метки (18 → 5): ветвления `BPL`/`BEQ`/`BNE` в `battle_collide.c`, `battle_respawn.c` (`load_new_tank`, + пропущенные `@enemiesLeft`/`@firstCycle`), `battle_tank_status.c`, `sound_command_loop_count0` переписаны на явные `goto`. Расхождений с ASM не найдено; машинный код при `-O2` идентичен прежнему. Оставшиеся 5 (`sound_engine.c`: `at__`, `skip_2`, `nextSlot` — цели `BCC` вокруг `INC ptr+1`, которую C не моделирует; `equal0` в `loop_count1/2` — вход через `.BYTE $2C`) не используются законно.
 - Номера строк ASM приведены к эталону (romhack `Battle City (J).asm`, 8056 строк): исправлено 89 ссылок в `PORTING.md` и `/* ASM: … */` в `src/game/`; `Save_To_VRAM` → `Save_to_VRAM`; `draw_title_cursor` помечен как C-port helper (ASM-метки нет). Диапазоны `(ASM:x–y)` в списке goto-якорей были верны. Номера внутренних меток в свободном тексте (`line 3014` и т.п.) не проверялись.
 - `Null_Status`: номер строки `XXXX`/`6331` → `6315` (сверено с upstream; 6331 — это `Rise_TankStatus_Bit`).
@@ -24,8 +26,10 @@ _Обновлено: 2026-09-27_
 
 ## Известные проблемы
 
+- **Выход за границу `SoundChannels[4]` в `play_sound`** (`sound_engine.c`, ветка `ch >= 5`: `SoundChannels[ch - 5] = 1`). Мусорный power-on байт `Sound_DataBlocks[x*8]` (напр. `$FA`) даёт индекс 245 — C пишет в чужую глобальную (ASan: global-buffer-overflow за `Sound_Temp2`). В ASM это `STA SoundChannels,X` — запись в zero page по `SoundChannels+X` (с переносом внутри страницы для zp,X). Нужно выяснить адресацию и смоделировать запись в ZP. Воспроизведение: сборка с `-fsanitize=address,undefined`, `--test-frames 60`. Эталон регрессии фиксирует текущее поведение — после исправления его, вероятно, придётся обновить.
 - `zero_page_viewer()` — отладочная функция, чтение ZP заглушено нулём (в C нет реального ZP mapping).
 
 ## Следующие шаги
 
+- [ ] Исправить запись за `SoundChannels` (см. выше), затем добавить в CI прогон регрессии под ASan/UBSan.
 - [ ] Повторная выборочная сверка функций, где были недавние баги (коллизии, AI, звук), с ASM.

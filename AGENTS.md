@@ -15,8 +15,9 @@ cmake --build build -j8                  # бинарник: build/battle_city
 ./build/battle_city [--region ntsc|pal] [--apu-filters] [--scale N]
 ```
 
-- Тестов нет. Проверка = сборка без новых предупреждений + ручной прогон нужного экрана.
-- CI (`.github/workflows/ci.yml`, на каждый push): SDL2/SDL3 × Release/Debug + `DEBUG_SCREENS`, флаги `-Werror -Wno-error=unused-label`, 10-секундный headless-запуск. Локальный аналог:
+- **Регрессионный тест по кадрам:** `tests/regression/run.sh build/battle_city` (или `ctest --test-dir build`). Прогоняет сценарии `attract`/`play_1p`/`construction` в детерминированном режиме `--test-frames` (без SDL и потоков, ~1 с) и сравнивает хэши кадров и записей в APU с `tests/regression/golden/`. `DUMP_DIR=dir` — сохранить BMP-кадры при расхождении.
+- **Меняет вывод намеренно** (исправление бага с видимым эффектом) — пересоздай эталон `run.sh build/battle_city --update`, просмотри кадры (`--test-dump`) и объясни в коммите, почему эталон изменился. Рефакторинг без изменения поведения эталон менять **не должен**.
+- CI (`.github/workflows/ci.yml`, на каждый push): SDL2/SDL3 × Release/Debug + `DEBUG_SCREENS`, флаги `-Werror -Wno-error=unused-label`, регрессионный тест, 10-секундный headless-запуск. Локальный аналог:
   `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy SDL_RENDER_DRIVER=software timeout 10 ./build/battle_city` (код 124 = не упал).
 - Без SDL (например, в облачном контейнере) проверяй синтаксис так:
   `for f in src/game/*.c src/nes/*.c; do gcc -std=c11 -fsyntax-only -Wall -Wextra -Wpedantic -Wno-unused-parameter -Isrc -Isrc/game -Isrc/nes $f; done`
@@ -33,6 +34,7 @@ cmake --build build -j8                  # бинарник: build/battle_city
 | `src/nes/` | Эмуляция: `apu_sim` (SPSC ring buffer), `ppu_sim` (VRAM → framebuffer), `config` (NTSC/PAL), `chr_load` |
 | `src/sdl_init.c`, `sdl_run.c` | Окно/аудио/ввод; render-поток с фиксированным FPS вызывает `nmi()` |
 | `src/debug.c` | Отладочный «автопилот» (только при `DEBUG_SCREENS`) |
+| `src/test_mode.c`, `tests/regression/` | Детерминированный режим `--test-*`: кадр синхронно в `plat_sem_wait`, ввод из скрипта; сценарии и эталоны |
 | `PORTING.md` | Чеклист всех ASM-функций → C-функций со статусом сверки; конвенции JSR-целей/меток |
 | `PROGRESS.md` | Текущее состояние, известные баги, следующие шаги |
 

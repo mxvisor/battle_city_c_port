@@ -80,3 +80,8 @@ target_include_directories(battle_city PRIVATE
     ${CMAKE_BINARY_DIR}
     ${SDL_INCLUDE_DIRS}
 )
+
+# Регрессионный тест по кадрам (детерминированный headless-режим, см. tests/regression/run.sh)
+enable_testing()
+add_test(NAME regression
+         COMMAND ${CMAKE_SOURCE_DIR}/tests/regression/run.sh $<TARGET_FILE:battle_city>)
