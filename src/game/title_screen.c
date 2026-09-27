@@ -10,7 +10,6 @@
 #include "battle_tank_status.h"
 #include "battle_tank.h"
 #include "draw.h"
-#include "strings.h"
 #include "hiscore_screen.h"
 
 static const uint8_t aNAMCOT[] = {

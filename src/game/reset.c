@@ -4,7 +4,6 @@
 #include "draw.h"
 #include "ppu_registers.h"
 #include "nmi.h"
-#include "strings.h"
 #include "sound_engine.h"
 #include <string.h>
 #include <stdint.h>

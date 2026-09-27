@@ -6,7 +6,6 @@
 #include "coords.h"
 #include "ppu_registers.h"
 #include "nmi.h"
-#include "strings.h"
 
 static const uint8_t TSABlock_PalNumber[16] = {
     0, 0, 0, 0, 0, 3, 3, 3,

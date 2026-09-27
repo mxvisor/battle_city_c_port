@@ -2,7 +2,6 @@
 #include "draw.h"
 #include "nmi.h"
 #include "sound_engine.h"
-#include "strings.h"
 #include "zeropage.h"
 #include "bss.h"
 

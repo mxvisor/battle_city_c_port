@@ -1,5 +1,4 @@
 #include "battle_hud.h"
-#include "strings.h"
 #include "zeropage.h"
 #include "nmi.h"
 #include "draw.h"

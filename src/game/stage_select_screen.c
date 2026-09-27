@@ -11,7 +11,6 @@
 #include "pts_screen.h"
 #include "battle_hq.h"
 #include "levels.h"
-#include "strings.h"
 #include "coords.h"
 #include "battle_bonus.h"
 #include "battle_bullet.h"

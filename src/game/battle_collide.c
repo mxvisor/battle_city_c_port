@@ -6,7 +6,6 @@
 #include "battle_hq.h"
 #include "score.h"
 #include "battle_bonus.h"
-#include "strings.h"
 
 static const uint8_t EnemyKill_Score[4] = { 0x10, 0x20, 0x30, 0x40 };
 
