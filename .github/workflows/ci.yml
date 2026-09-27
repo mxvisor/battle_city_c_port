@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SDL3_VERSION: release-3.2.24
+  # -Wunused-label ожидаемы (ASM-метки сохраняются намеренно, см. AGENTS.md).
+  # -Wpedantic «label before declaration» — известная проблема из PROGRESS.md.
+  # Любое другое предупреждение валит сборку.
+  STRICT_CFLAGS: -Werror -Wno-error=unused-label -Wno-error=pedantic
+
+jobs:
+  linux:
+    name: Linux ${{ matrix.sdl }} ${{ matrix.build_type }}${{ matrix.debug_screens == 'ON' && ' +DEBUG_SCREENS' || '' }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        sdl: [SDL2, SDL3]
+        build_type: [Release, Debug]
+        debug_screens: ['OFF']
+        include:
+          - sdl: SDL2
+            build_type: Debug
+            debug_screens: 'ON'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # git describe для version.h
+
+      - name: Install SDL2
+        if: matrix.sdl == 'SDL2'
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-dev
+
+      - name: Cache SDL3
+        if: matrix.sdl == 'SDL3'
+        id: cache-sdl3
+        uses: actions/cache@v4
+        with:
+          path: ~/sdl3-prefix
+          key: sdl3-${{ env.SDL3_VERSION }}-ubuntu-24.04
+
+      - name: Build SDL3 from source
+        if: matrix.sdl == 'SDL3' && steps.cache-sdl3.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libasound2-dev libpulse-dev
+          git clone --depth 1 --branch "$SDL3_VERSION" https://github.com/libsdl-org/SDL.git sdl3-src
+          cmake -S sdl3-src -B sdl3-build -DCMAKE_BUILD_TYPE=Release \
+                -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF -DCMAKE_INSTALL_PREFIX="$HOME/sdl3-prefix"
+          cmake --build sdl3-build -j"$(nproc)"
+          cmake --install sdl3-build
+
+      - name: Configure
+        run: |
+          EXTRA=()
+          if [ "${{ matrix.sdl }}" = SDL3 ]; then
+            EXTRA+=(-DUSE_SDL3=ON -DCMAKE_PREFIX_PATH="$HOME/sdl3-prefix")
+          fi
+          cmake -B build -S . \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                -DDEBUG_SCREENS=${{ matrix.debug_screens }} \
+                -DCMAKE_C_FLAGS="$STRICT_CFLAGS" \
+                "${EXTRA[@]}"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)" 2>&1 | tee build.log; exit "${PIPESTATUS[0]}"
+
+      - name: Warnings summary
+        if: always()
+        run: |
+          {
+            echo "### Warnings (${{ matrix.sdl }} ${{ matrix.build_type }})"
+            echo '```'
+            grep -oE '\[-W[a-z-]+\]' build.log | sort | uniq -c || echo "none"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test (headless, 10 s)
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+          SDL_RENDER_DRIVER: software
+        run: |
+          export LD_LIBRARY_PATH="$HOME/sdl3-prefix/lib"
+          set +e
+          timeout 10 ./build/battle_city
+          rc=$?
+          # 124 = timeout убил живой процесс: игра проработала 10 с без падения
+          if [ "$rc" -ne 124 ]; then echo "::error::battle_city exited early with code $rc"; exit 1; fi
+          echo "OK: still running after 10 s"
