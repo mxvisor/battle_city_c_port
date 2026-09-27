@@ -13,7 +13,5 @@ void selected_1player(void);
 void selected_2players(void);
 /* ASM: Selected_Construction (1953) */
 void selected_construction(void);
-/* C-port helper: ASM-метки Draw_TitleCursor нет; обёртка над tanks_status_handle() */
-void draw_title_cursor(void);
 
 #endif // TITLE_H

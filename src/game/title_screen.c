@@ -60,10 +60,6 @@ static const TitleFunc Title_JumpTable[] = {
     selected_construction
 };
 
-void draw_title_cursor(void) {
-    tanks_status_handle();
-}
-
 /* ASM: Draw_TitleScreen (2948).
  * Внутренняя метка @_ (line 3014) сохранена как `at_`. */
 static const uint8_t aBattle[] = { 'B','A','T','T','L','E', 0xFFu };
