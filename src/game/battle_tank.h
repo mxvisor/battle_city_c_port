@@ -24,7 +24,7 @@ void hide_hi_bit_under_tank(uint8_t slot);
 void hide_hi_bit_in_buffer(uint8_t slot);
 /* ASM: Button_To_DirectionIndex (6373) */
 uint8_t button_to_direction_index(uint8_t buttons);
-/* ASM: Null_Status (XXXX) */
+/* ASM: Null_Status (6315) */
 void null_status(void);
 /* ASM: Rise_TankStatus_Bit (6331) */
 void rise_tank_status_bit(uint8_t slot);

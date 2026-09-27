@@ -287,7 +287,7 @@ Motion_Handle_Next:
     return;
 }
 
-/* ASM: Null_Status (6331). LDA #0; LDX #7; @_: STA Tank_Status,X; STA Player_Ice_Status,X; DEX; BPL @_ */
+/* ASM: Null_Status (6315). LDA #0; LDX #7; @_: STA Tank_Status,X; STA Player_Ice_Status,X; DEX; BPL @_ */
 void null_status(void) {
     uint8_t x = 7u;
 at_:

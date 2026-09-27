@@ -143,7 +143,7 @@
 - [x] `Load_Tank` (ASM:5206) → `load_tank()` в `game/battle_tank_status.c` (End_Load_Tank label)
 - [x] `Load_New_Tank` (ASM:6301) → `load_new_tank()` в `game/battle_respawn.c` (load_NewEnemy/continueProcess/checkTankType/exit labels)
 - [x] `Load_Enemy_Count` (ASM:6373) → `load_enemy_count()` в `game/battle_respawn.c` (LevelModeZero/SaveEnemyCount labels)
-- [x] `Null_Status` (ASM:6331) → `null_status()` в `game/battle_tank.c` (at_ label, DEX/BPL)
+- [x] `Null_Status` (ASM:6315) → `null_status()` в `game/battle_tank.c` (at_ label, DEX/BPL)
 - [x] `Rise_TankStatus_Bit` (ASM:6352) → `rise_tank_status_bit()` в `game/battle_tank.c`
 - [x] `Button_To_DirectionIndex` (ASM:6644) → `button_to_direction_index()` в `game/battle_tank.c` (at_/at__/at___/at____ labels через ASL+BCC цепочку)
 - [x] `Compare_Block_X` (ASM:4999) → `compare_block_x()` в `game/battle_tank_status.c`
