@@ -130,7 +130,7 @@
 - [x] `Status_Core` (ASM:4751) → `status_core()` в `game/battle_tank_status.c` (jump table)
 - [x] `Misc_Status_Handle` (ASM:4768) → `misc_status_handle()` в `game/battle_tank_status.c` (LoadStts/End labels)
 - [x] `Get_RandomStatus` (ASM:4920) → `get_random_status()` в `game/battle_tank_status.c` (Sbc/Save/End labels)
-- [x] `Explode_Handle` (ASM:5062) → `explode_handle()` в `game/battle_tank_status.c` (Skip/SkipRiseBit/SaveStts/Dec_Enemy/CheckHQ/Check1pLives/End labels)
+- [x] `Explode_Handle` (ASM:5062) → `explode_handle()` в `game/battle_tank_status.c` (Skip/SkipRiseBit/SaveStts/Dec_Enemy/CheckHQ/Check1pLives/End labels; `BNE SkipRiseBit_Explode_Handle` — явный `goto`)
 - [x] `Move_Tank` (ASM:1286) → `move_tank()` в `game/construction_screen.c` (все ASM-метки: `ArrowNotPressed`/`checkJoypad`/`delayEq14`/`moveTank`/`End_Move_Tank`)
 - [x] `Check_BorderReach` (ASM:1662) → `check_border_reach()` в `game/battle_tank.c` (at_/at__/at___/End labels)
 - [x] `Detect_Motion` (ASM:4556) → `detect_motion()` в `game/battle_tank.c` (End_Detect_Motion label)
@@ -141,7 +141,7 @@
 - [x] `Make_Respawn` (ASM:6185) → `make_respawn()` в `game/battle_respawn.c` (Enemy_Operations/at_/Make_BonusEnemy/exit_ labels)
 - [x] `Set_Respawn` (ASM:5140) → `set_respawn()` в `game/battle_tank_status.c` (End_Set_Respawn label)
 - [x] `Load_Tank` (ASM:5156) → `load_tank()` в `game/battle_tank_status.c` (End_Load_Tank label)
-- [x] `Load_New_Tank` (ASM:6242) → `load_new_tank()` в `game/battle_respawn.c` (load_NewEnemy/continueProcess/checkTankType/exit labels)
+- [x] `Load_New_Tank` (ASM:6242) → `load_new_tank()` в `game/battle_respawn.c` (load_NewEnemy/enemiesLeft/firstCycle/continueProcess/checkTankType/exit labels — все ветки через `goto`; добавлены пропущенные `@enemiesLeft`/`@firstCycle`)
 - [x] `Load_Enemy_Count` (ASM:6343) → `load_enemy_count()` в `game/battle_respawn.c` (LevelModeZero/SaveEnemyCount labels)
 - [x] `Null_Status` (ASM:6315) → `null_status()` в `game/battle_tank.c` (at_ label, DEX/BPL)
 - [x] `Rise_TankStatus_Bit` (ASM:6331) → `rise_tank_status_bit()` в `game/battle_tank.c`
@@ -179,9 +179,9 @@
 - [x] `Update_Ricochet` (ASM:5721) → `update_ricochet()` в `game/battle_bullet_draw.c`
 - [x] `Bullet_Fly_Handle` (ASM:6553) → `bullet_fly_handle()` в `game/battle_bullet.c` (loop/at__/at___/at____/getCoord/next/End labels)
 - [x] `Hide_All_Bullets` (ASM:6301) → `hide_all_bullets()` в `game/battle_bullet.c` (at_ label, DEX/BPL)
-- [x] `BulletToObject_Impact_Handle` (ASM:6662) → `bullet_to_object_impact_handle()` в `game/battle_collide.c` (at_/at__/Armored_Wall/BulletToObject_Return0/Return1 labels)
-- [x] `BulletToTank_Impact_Handle` (ASM:6731) → `bullet_to_tank_impact_handle()` в `game/battle_collide.c` (все @-метки сохранены)
-- [x] `BulletToBullet_Impact_Handle` (ASM:7069) → `bullet_to_bullet_impact_handle()` в `game/battle_collide.c` (loop/loop_2/checkMinX/checkMinY/next labels)
+- [x] `BulletToObject_Impact_Handle` (ASM:6662) → `bullet_to_object_impact_handle()` в `game/battle_collide.c` (at_/at__/Armored_Wall/BulletToObject_Return0/Return1 labels; `BEQ @__` — явный `goto`)
+- [x] `BulletToTank_Impact_Handle` (ASM:6731) → `bullet_to_tank_impact_handle()` в `game/battle_collide.c` (все @-метки сохранены; `BPL @checkMin*`/`BEQ @explode_Player_Tank_Impact` — явные `goto`, без структурных `if`)
+- [x] `BulletToBullet_Impact_Handle` (ASM:7069) → `bullet_to_bullet_impact_handle()` в `game/battle_collide.c` (loop/loop_2/checkMinX/checkMinY/next labels; `BPL @checkMin*` — явные `goto`)
 
 ## Bullets — отрисовка
 

@@ -67,10 +67,11 @@ void explode_handle(uint8_t slot) {
         goto Skip_Explode_Handle;
     }
 
-    if (a == 0x10) {
-        a |= 6;
-        goto SaveStts_Explode_Handle;
+    if (a != 0x10) {
+        goto SkipRiseBit_Explode_Handle;
     }
+    a |= 6;
+    goto SaveStts_Explode_Handle;
 
 SkipRiseBit_Explode_Handle:
     a |= 3;

@@ -60,9 +60,10 @@ loop_2: /* ASM: @loop_2 */
     }
 
     dx = (uint8_t)(Bullet_X[bslot] - Tank_X[tank_slot]);
-    if ((int8_t)dx < 0) {
-        dx = (uint8_t)(0u - dx);
+    if ((int8_t)dx >= 0) {
+        goto checkMinX_TankImpact; /* ASM: BPL */
     }
+    dx = (uint8_t)(0u - dx); /* EOR #$FF; ADC #1 */
 
 checkMinX_TankImpact: /* ASM: @checkMinX_TankImpact */
     if (dx >= 0x0Au) {
@@ -70,9 +71,10 @@ checkMinX_TankImpact: /* ASM: @checkMinX_TankImpact */
     }
 
     dy = (uint8_t)(Bullet_Y[bslot] - Tank_Y[tank_slot]);
-    if ((int8_t)dy < 0) {
-        dy = (uint8_t)(0u - dy);
+    if ((int8_t)dy >= 0) {
+        goto checkMinY_TankImpact; /* ASM: BPL */
     }
+    dy = (uint8_t)(0u - dy); /* EOR #$FF; ADC #1 */
 
 checkMinY_TankImpact: /* ASM: @checkMinY_TankImpact */
     if (dy >= 0x0Au) {
@@ -80,10 +82,11 @@ checkMinY_TankImpact: /* ASM: @checkMinY_TankImpact */
     }
 
     Bullet_Status[bslot] = 0x33u;
-    if (Invisible_Timer[tank_slot] != 0u) {
-        Bullet_Status[bslot] = 0u;
-        goto next_Bullet_Tank_Impact;
+    if (Invisible_Timer[tank_slot] == 0u) {
+        goto explode_Player_Tank_Impact;
     }
+    Bullet_Status[bslot] = 0u;
+    goto next_Bullet_Tank_Impact;
 
 explode_Player_Tank_Impact: /* ASM: @explode_Player_Tank_Impact */
     Tank_Status[tank_slot] = 0x73u;
@@ -137,9 +140,10 @@ conterEqual: /* ASM: @conterEqual */
 
 load_X_TankImpact: /* ASM: @load_X_TankImpact */
     dx = (uint8_t)(Bullet_X[bslot] - Tank_X[tank_slot]);
-    if ((int8_t)dx < 0) {
-        dx = (uint8_t)(0u - dx);
+    if ((int8_t)dx >= 0) {
+        goto checkMinX2_TankImpact; /* ASM: BPL */
     }
+    dx = (uint8_t)(0u - dx); /* EOR #$FF; ADC #1 */
 
 checkMinX2_TankImpact: /* ASM: @checkMinX2_TankImpact */
     if (dx >= 0x0Au) {
@@ -147,9 +151,10 @@ checkMinX2_TankImpact: /* ASM: @checkMinX2_TankImpact */
     }
 
     dy = (uint8_t)(Bullet_Y[bslot] - Tank_Y[tank_slot]);
-    if ((int8_t)dy < 0) {
-        dy = (uint8_t)(0u - dy);
+    if ((int8_t)dy >= 0) {
+        goto checkMinY2_TankImpact; /* ASM: BPL */
     }
+    dy = (uint8_t)(0u - dy); /* EOR #$FF; ADC #1 */
 
 checkMinY2_TankImpact: /* ASM: @checkMinY2_TankImpact */
     if (dy >= 0x0Au) {
@@ -244,9 +249,10 @@ loop_6: /* ASM: @loop_6 */
     }
 
     dx = (uint8_t)(Bullet_X[bslot] - Tank_X[tank_slot]);
-    if ((int8_t)dx < 0) {
-        dx = (uint8_t)(0u - dx);
+    if ((int8_t)dx >= 0) {
+        goto checkMinX3_TankImpact; /* ASM: BPL */
     }
+    dx = (uint8_t)(0u - dx); /* EOR #$FF; ADC #1 */
 
 checkMinX3_TankImpact: /* ASM: @checkMinX3_TankImpact */
     if (dx >= 0x0Au) {
@@ -254,9 +260,10 @@ checkMinX3_TankImpact: /* ASM: @checkMinX3_TankImpact */
     }
 
     dy = (uint8_t)(Bullet_Y[bslot] - Tank_Y[tank_slot]);
-    if ((int8_t)dy < 0) {
-        dy = (uint8_t)(0u - dy);
+    if ((int8_t)dy >= 0) {
+        goto checkMinY3_TankImpact; /* ASM: BPL */
     }
+    dy = (uint8_t)(0u - dy); /* EOR #$FF; ADC #1 */
 
 checkMinY3_TankImpact: /* ASM: @checkMinY3_TankImpact */
     if (dy >= 0x0Au) {
@@ -325,9 +332,10 @@ loop_2: /* ASM: @loop_2 */
     }
 
     dx = (uint8_t)(Bullet_X[slot_y] - Bullet_X[slot_x]);
-    if ((int8_t)dx < 0) {
-        dx = (uint8_t)(0u - dx);
+    if ((int8_t)dx >= 0) {
+        goto checkMinX_BulletImpact; /* ASM: BPL */
     }
+    dx = (uint8_t)(0u - dx); /* EOR #$FF; ADC #1 */
 
 checkMinX_BulletImpact: /* ASM: @checkMinX_BulletImpact */
     if (dx >= 6u) {
@@ -335,9 +343,10 @@ checkMinX_BulletImpact: /* ASM: @checkMinX_BulletImpact */
     }
 
     dy = (uint8_t)(Bullet_Y[slot_y] - Bullet_Y[slot_x]);
-    if ((int8_t)dy < 0) {
-        dy = (uint8_t)(0u - dy);
+    if ((int8_t)dy >= 0) {
+        goto checkMinY_BulletImpact; /* ASM: BPL */
     }
+    dy = (uint8_t)(0u - dy); /* EOR #$FF; ADC #1 */
 
 checkMinY_BulletImpact: /* ASM: @checkMinY_BulletImpact */
     if (dy >= 6u) {
@@ -394,12 +403,13 @@ at_:
             goto Armored_Wall;
         }
 
-        if ((Bullet_Property[slot] & 0x02u) != 0u) {
-            Spr_TileIndex = 0u;
-            draw_tile();
-            Snd_Brick_Ricochet = 1u;
-            goto BulletToObject_Return0;
+        if ((Bullet_Property[slot] & 0x02u) == 0u) {
+            goto at__;
         }
+        Spr_TileIndex = 0u;
+        draw_tile();
+        Snd_Brick_Ricochet = 1u;
+        goto BulletToObject_Return0;
 
 at__:
         if (tile == 0x10u) {

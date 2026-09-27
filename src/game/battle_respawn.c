@@ -159,53 +159,61 @@ const uint8_t EnemyType_ROMArray[35 * 4] = {
     0xC0, 0xA0, 0x80, 0xE0,  /* 35 (and Demo-level) */
 };
 
-/* ASM: Load_New_Tank (???) */
+/* ASM: Load_New_Tank (6242) */
 void load_new_tank(uint8_t slot) {
+    uint8_t a;
+    uint8_t y;
+    uint8_t level_idx;
+
     Tank_Status[slot] = Respawn_Status[slot];
     if (slot >= 2) {
         goto load_NewEnemy;
     }
 
     Invisible_Timer[slot] = 3;
-    uint8_t a = Player_Type[slot];
+    a = Player_Type[slot];
     goto checkTankType;
 
 load_NewEnemy: /* ASM: @load_NewEnemy */
-    {
-        uint8_t y = Enemy_TypeNumber;
-        if (Enemy_Count[y] == 0) {
-            Enemy_TypeNumber++;
-            goto load_NewEnemy;
-        }
-
-        Enemy_Count[y] -= 1;
-        uint8_t level_idx;
-        if (Level_Mode == 0) {
-            level_idx = Level_Number;
-            goto continueProcess;
-        }
-
-        level_idx = 35;
-continueProcess: /* ASM: @continueProcess */
-        level_idx -= 1;
-        level_idx <<= 1;
-        level_idx <<= 1;
-        level_idx += Enemy_TypeNumber;
-        a = EnemyType_ROMArray[level_idx];
-        /* ASM: CMP #$E0; BNE @checkTankType; ORA #3
-           Only the heavily-armored ($E0) enemy gets its armor-level bits set;
-           inverting this condition makes EVERY enemy's Tank_Type cycle through
-           palettes in operating_tank — visible as constant tank flicker. */
-        if (a == 0xE0) {
-            a |= 0x03;
-        }
+    y = Enemy_TypeNumber;
+    if (Enemy_Count[y] != 0) {
+        goto enemiesLeft;
     }
+    Enemy_TypeNumber++;
+    goto load_NewEnemy;
+
+enemiesLeft: /* ASM: @enemiesLeft */
+    Enemy_Count[y] -= 1;
+    if (Level_Mode == 0) {
+        goto firstCycle;
+    }
+    level_idx = 35;
+    goto continueProcess;
+
+firstCycle: /* ASM: @firstCycle */
+    level_idx = Level_Number;
+
+continueProcess: /* ASM: @continueProcess */
+    level_idx -= 1;
+    level_idx <<= 1;
+    level_idx <<= 1;
+    level_idx += Enemy_TypeNumber;
+    a = EnemyType_ROMArray[level_idx];
+    /* ASM: CMP #$E0; BNE @checkTankType; ORA #3
+       Only the heavily-armored ($E0) enemy gets its armor-level bits set;
+       inverting this condition makes EVERY enemy's Tank_Type cycle through
+       palettes in operating_tank — visible as constant tank flicker. */
+    if (a != 0xE0) {
+        goto checkTankType;
+    }
+    a |= 0x03;
 
 checkTankType: /* ASM: @checkTankType */
     a |= Tank_Type[slot];
-    if (a == 0xE7) {
-        a = 0xE4;
+    if (a != 0xE7) {
+        goto exit;
     }
+    a = 0xE4;
 
 exit: /* ASM: @exit */
     Tank_Type[slot] = a;

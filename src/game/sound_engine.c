@@ -158,7 +158,8 @@ bool sound_command_clear_counters(void) {
  * (`equal0`) и вызовы соседних ASM-функций (JumpToOffset, AdvancePointer). */
 bool sound_command_loop_count0(void) {
     uint8_t target;
-    /* LDX #0; BEQ equal0 (fallthrough — Z от LDX #0) */
+    /* LDX #0; BEQ equal0 (Z от LDX #0 — переход всегда) */
+    goto equal0;
 equal0:
     /* JSR Sound_LoadNextByte */
     target = sound_load_next_byte();

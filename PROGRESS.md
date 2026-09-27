@@ -13,6 +13,7 @@ _Обновлено: 2026-09-27_
 
 ## Последние исправления (см. `git log`)
 
+- Неиспользуемые ASM-метки (18 → 5): ветвления `BPL`/`BEQ`/`BNE` в `battle_collide.c`, `battle_respawn.c` (`load_new_tank`, + пропущенные `@enemiesLeft`/`@firstCycle`), `battle_tank_status.c`, `sound_command_loop_count0` переписаны на явные `goto`. Расхождений с ASM не найдено; машинный код при `-O2` идентичен прежнему. Оставшиеся 5 (`sound_engine.c`: `at__`, `skip_2`, `nextSlot` — цели `BCC` вокруг `INC ptr+1`, которую C не моделирует; `equal0` в `loop_count1/2` — вход через `.BYTE $2C`) не используются законно.
 - Номера строк ASM приведены к эталону (romhack `Battle City (J).asm`, 8056 строк): исправлено 89 ссылок в `PORTING.md` и `/* ASM: … */` в `src/game/`; `Save_To_VRAM` → `Save_to_VRAM`; `draw_title_cursor` помечен как C-port helper (ASM-метки нет). Диапазоны `(ASM:x–y)` в списке goto-якорей были верны. Номера внутренних меток в свободном тексте (`line 3014` и т.п.) не проверялись.
 - `Null_Status`: номер строки `XXXX`/`6331` → `6315` (сверено с upstream; 6331 — это `Rise_TankStatus_Bit`).
 - Удалён `#include "strings.h"` из 7 файлов `src/game/`: такого файла в проекте никогда не было (с initial commit), подхватывался системный POSIX `<strings.h>`, ни одна его функция не использовалась.
