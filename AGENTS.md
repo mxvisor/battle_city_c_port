@@ -1,116 +1,91 @@
-# AGENTS.md — Правила портирования Battle City (J)
+# AGENTS.md — Battle City (J), порт NES ASM → C
 
-## Оригинальный ASM
+Побайтовый перевод дизассемблера NES Battle City (1985) на C + эмуляция APU/PPU на SDL2/SDL3.
+Цель — **точное** поведение оригинала, а не «похожая» игра.
 
-Основной дизассемблер:
-- `DOCS/Battle City (J).asm` — полный дизассемблер (8079 строк)
+В начале сессии прочитай `PROGRESS.md` и `git log --oneline -10`; в конце обнови `PROGRESS.md`.
 
-При портировании всегда сверяйся с `Battle City (J).asm` по номерам строк и меткам.
+## Команды
 
-## Чеклист соответствия
+```bash
+cmake -B build -S .                      # конфиг (SDL2); -DUSE_SDL3=ON для SDL3
+cmake -B build -S . -DDEBUG_SCREENS=ON   # + src/debug.c (автопрохождение к экрану, см. DBG_* в файле)
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug   # -O0 -g вместо -O2 -march=native -flto
+cmake --build build -j8                  # бинарник: build/battle_city
+./build/battle_city [--region ntsc|pal] [--apu-filters] [--scale N]
+```
 
-- `PORTING.md` — список всех top-level функций из `Battle City (J).asm` с маппингом на C-функции и пометками статуса проверки (`[x]` сверено, `[~]` без сверки, `[ ]` не проверено). Там же конвенция о ASM-метках, которые в C превращаются в `goto`-якоря или сворачиваются внутрь других функций. Обновляй чеклист при каждой проверке/правке функции.
+- Тестов нет. Проверка = сборка без новых предупреждений + ручной прогон нужного экрана.
+- Без SDL (например, в облачном контейнере) проверяй синтаксис так:
+  `for f in src/game/*.c src/nes/*.c; do gcc -std=c11 -fsyntax-only -Wall -Wextra -Wpedantic -Wno-unused-parameter -Isrc -Isrc/game -Isrc/nes $f; done`
+- CHR встраивается из `data/chr.bmp` на этапе **конфигурации** CMake — после замены BMP перезапусти `cmake -B build`.
+
+## Карта
+
+| Путь | Что там |
+|---|---|
+| `src/game/` | Порт ASM. Без SDL; к эмуляции обращается только вызовами `ppu_*`/`apu_write*` (из `draw.c`, `nmi.c`, `sound_engine.c`) |
+| `src/game/zeropage.*`, `bss.*` | NES RAM: переменные с ASM-именами |
+| `src/game/ppu_registers.*`, `apu_registers.*` | Теневые регистры PPU/APU с ASM-именами |
+| `src/game/nmi.*` | `nmi()`, `nmi_wait()`, `vblank_wait()`, джойпады, `plat_*` API (семафоры, `plat_running`, `game_exit_buf`) |
+| `src/nes/` | Эмуляция: `apu_sim` (SPSC ring buffer), `ppu_sim` (VRAM → framebuffer), `config` (NTSC/PAL), `chr_load` |
+| `src/sdl_init.c`, `sdl_run.c` | Окно/аудио/ввод; render-поток с фиксированным FPS вызывает `nmi()` |
+| `src/debug.c` | Отладочный «автопилот» (только при `DEBUG_SCREENS`) |
+| `PORTING.md` | Чеклист всех ASM-функций → C-функций со статусом сверки; конвенции JSR-целей/меток |
+| `PROGRESS.md` | Текущее состояние, известные баги, следующие шаги |
+
+Потоки: game-поток (`nes_thread`) крутит игровую логику и спит в `nmi_wait()`; render-поток раз в кадр делает `ppu_render` → `nmi()` → будит game-поток. Подробнее — `README.md`.
+
+## Неочевидные ловушки
+
+- **ASM нет в репозитории.** `DOCS/` в `.gitignore`. Источник: [romhack/battle-city-disassembly](https://github.com/romhack/battle-city-disassembly), файл кладётся в `DOCS/Battle City (J).asm` (8079 строк). Все номера строк (`ASM:1234`) в коде и `PORTING.md` — по нему. Если файла нет — скажи об этом, а не восстанавливай логику по памяти.
+- **`-Wunused-label` — ожидаемые предупреждения.** Неиспользуемые ASM-метки сохраняются намеренно; не удаляй их ради чистой сборки.
+- `.WORD` в 6502 — little-endian: `.WORD $F207` = байты `07 F2`.
+- Дизассемблер ошибается: `AND #Sound_CurrentData_Ptr` — это `AND #$C0` (байт принят за адрес), `ORA #Tank_Status` — это `ORA #$A0`. Смотри контекст.
+- `$FF` в `Screen_Buffer` — терминатор записи; данные `$FF` экранируются (см. `update_screen`/`attrib_to_scr_buffer`).
+- Тайловые «строки» — индексы CHR, а не ASCII (`-` = `$6B`, `.` = `$69`). Таблица — `PORTING.md` §«Строковые ASM-переменные».
+- `*.py` и `BUGS.md` в `.gitignore` — вспомогательные скрипты и черновики не попадут в коммит.
 
 ## Правила портирования
 
-### 1. Точное соответствие ASM
+### Точность
+- **Не угадывай — читай ASM.** Каждая маска, сдвиг и флаг важны: `AND #$F8 / LSR / LSR` — это `>> 2`.
+- Не добавляй «защитный» код, которого нет в ASM (лишние `if`, обнуления, клампы).
+- Приоритет правок: логика/индексы LUT/порядок байт/ветвления → побочные эффекты и состояние ZP → косметика.
 
-- **Не угадывай** — читай ASM. Каждая инструкция, каждая маска, каждый сдвиг имеют значение.
-- Если в ASM `AND #$F8 / LSR / LSR` — это `>> 2`, а не `>> 1`. Проверяй битовые операции побайтово.
-- `.WORD` в 6502 — **little-endian** (low byte first). `.WORD $F207` = байты `07 F2`. При чтении как `uint16_t` в C значение будет `0x07F2`, а не `0xF207`.
-- Дизассемблер может ошибаться: `AND #Sound_CurrentData_Ptr` может быть артефактом, где байт `$C0` интерпретирован как адрес. Смотри контекст и комментарии.
+### Управление потоком
+- Одна ASM-функция (от `Label:` до `; End of function Label`) = **одна** C-функция. Внутренние метки → `goto`-метки с **теми же** именами, включая `End_*` перед `RTS`. Не выноси их в хелперы.
+- Отдельная C-функция для метки — только если это JSR-цель из другой функции или у неё свой `; End of function`. Классификация — `PORTING.md` §«JSR-цели ≠ функции».
+- `BEQ/BNE/BCS/BCC/JMP` → `goto`. Fallthrough ≠ `return`: нет `RTS` — нет `return`.
+- `PLA / PLA / JMP label` (обход возврата) → код возврата, по которому caller делает `goto label`.
+- `setjmp`/`longjmp` — **только** для выхода из игры.
 
-### 2. Управление потоком
-
-- **Используй `goto`** для прямого перевода ветвлений ASM (`BEQ`, `BNE`, `BCS`, `BCC`, `JMP`).
-- Fallthrough — это не `return`. Если ASM не делает `RTS`, C не делает `return`.
-- **Fallthrough-функции:** часто встречается, что после `; End of function ...` нет `RTS`. Код просто переходит в следующую функцию/метку. В C это `goto` на следующую метку или объединение логики.
-- `PLA / PLA / JMP label` — это обход возврата к вызывающему. В C это `goto label` или `return` с последующим переходом в caller.
-- `setjmp`/`longjmp` — **только** для выхода из игры. Обычный поток — `return`/`goto`.
-
-#### 2.1. Сохраняй структуру меток внутри функции
-
-ASM-функция между `Label:` и `; End of function Label` — это **одна** C-функция. Все её внутренние метки (`NotZeroCounter:`, `Bonus_NotTaken:`, `Draw_Bonus:`, `End_Bonus_Draw:` и т.п.) переводятся в `goto`-метки **внутри той же** C-функции, а не в отдельные хелперы.
-
-❌ **Неправильно** — распилить на helper:
-```c
-void bonus_draw(void) {
-    if (Bonus_X == 0u) return;
-    /* ... */
-    draw_bonus();  // вынесен в отдельную функцию
-}
-void draw_bonus(void) { /* Draw_Bonus label body */ }
-```
-
-✓ **Правильно** — одна функция с `goto`:
 ```c
 void bonus_draw(void) {
     if (Bonus_X == 0u) goto End_Bonus_Draw;
     if (BonusPts_TimeCounter == 0u) goto Bonus_NotTaken;
-    BonusPts_TimeCounter--;
-    if (BonusPts_TimeCounter != 0u) goto NotZeroCounter;
-    Bonus_X = 0u;
-    goto End_Bonus_Draw;
-
-NotZeroCounter:
-    TSA_Pal = 2u;
-    Spr_TileIndex = 0x3Bu;
-    goto Draw_Bonus;
-
+    /* ... */
 Bonus_NotTaken:
     if ((Frame_Counter & 8u) == 0u) goto End_Bonus_Draw;
-    TSA_Pal = 2u;
-    Spr_TileIndex = (uint8_t)((Bonus_Number << 2) + 0x81u);
     /* fallthrough */
 Draw_Bonus:
-    Temp_X = Bonus_X;
-    Temp_Y = Bonus_Y;
-    Spr_Attrib = 0u;
     draw_whole_spr();
-    Spr_Attrib = 0x20u;
 End_Bonus_Draw:
     return;
 }
 ```
 
-Имена меток в C — **те же**, что в ASM (включая `End_*`-метку перед `RTS`). Это сохраняет читаемость 1-в-1 с дизассемблером и упрощает сверку.
+### Именование и типы
+- `JSR Move_Tank` → `move_tank()`; локальные `@_`, `@__` → `at_`, `at__`. Переменные — как в ASM (`Tank_X`, `Scroll_Byte`).
+- Объявление в `.h`: `/* ASM: <OriginalName> (<line>) */`.
+- По умолчанию `uint8_t`; 16-бит адреса — `uint16_t`; `BMI`/`BPL` → каст к `int8_t`; carry из `ADC`/`SBC` — через `uint16_t`/`int16_t`.
 
-**Исключения**, когда метка становится отдельной C-функцией:
-- Метка — JSR-цель из **другой** функции (см. §2 раздел «Замечание: JSR-цели ≠ функции» в `PORTING.md`).
-- Метка — самостоятельная функция в дизассемблере (есть свой `; End of function`).
+### Заголовки
+- Без транзитивных включений: каждый `.c` включает всё, что использует. `zeropage.h`/`bss.h` — только `<stdint.h>` и переменные.
+- `src/game/` не включает SDL; новых зависимостей `game/ → nes/` не добавляй (эмуляция — отдельный слой).
 
-### 3. Заголовочные файлы
+## Рабочий процесс
 
-- **Нет транзитивных включений.** `zeropage.h` содержит только `<stdint.h>` и объявления zeropage-переменных.
-- Каждый `.c` файл включает **все** заголовки, которые ему нужны напрямую.
-- `render.h` **запрещено** включать в игровые модули (`game/*.c`). Рендер — отдельный слой.
-
-### 4. Именование
-
-- Функции: ASM `JSR CamelCase` → C `snake_case` (например, `JSR Move_Tank` → `move_tank()`)
-- Локальные метки ASM: `@_` → `at_`, `@__` → `at__`, `@___` → `at___` и т.д.
-- Переменные: те же имена, что в ASM (`Scroll_Byte`, `BkgPal_Number`, `Tank_X`)
-- В `.h` файлах: `/* ASM <OriginalName> (line <N>) */` в объявлении функции
-
-### 5. Типы данных
-
-- Всё `uint8_t` по умолчанию, если ASM работает с 8-бит значениями.
-- 16-бит адресация — `uint16_t`.
-- Знаковые сравнения (`BMI`/`BPL`) — каст к `int8_t`.
-- Carry из `ADC`/`SBC` — раскладка через `uint16_t`/`int16_t` промежуточное.
-
-### 6. Сборка
-
-- **Система сборки:** CMake
-- **Конфигурация:** `cmake -B build -S .`
-- **Компиляция:** `cmake --build build` или `make -C build -j8`
-- **Бинарник:** `build/battle_city`
-- **Зависимости:** SDL2 (библиотека + заголовки)
-- **CHR-данные:** встроены в бинарник на этапе сборки через `file(READ ... HEX)` в `CMakeLists.txt`
-- **Флаги оптимизации:** `-O2 -march=native -flto -Wall -Wextra -Wpedantic`
-
-### 10. Приоритеты исправлений
-
-1. **CRITICAL** — логика расчётов, индексы LUT, порядок байт, ветвления
-2. **MEDIUM** — побочные эффекты, указатели, состояние zero-page
-3. **LOW** — лишние записи регистров, косметические расхождения
+- После сверки/правки функции обнови её строку в `PORTING.md` (`[x]`/`[~]`/`[ ]` + короткий комментарий, что исправлено).
+- Коммиты — на английском, в стиле истории: заголовок `Fix <что>; <что ещё>`, в теле — список `- file: что и почему`.
+- `README.md` и `README.ru.md` синхронны: меняешь один — меняй второй.

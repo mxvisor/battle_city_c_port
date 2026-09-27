@@ -97,7 +97,9 @@ Load order: `chr.bin` → `chr.bmp` → embedded BMP.
 │       └── poweron_randomize.c/h  # memory initialization at startup
 ├── build/                   # binary + compiled data
 ├── PORTING.md               # ported functions checklist
-└── AGENTS.md                # porting rules
+├── AGENTS.md                # agent guide: commands, map, pitfalls, porting rules
+├── CLAUDE.md                # Claude Code entry point (imports AGENTS.md, PROGRESS.md)
+└── PROGRESS.md              # current status, known issues, next steps
 ```
 
 ### Architecture
@@ -128,7 +130,9 @@ Thus, `nmi()` is called **strictly in the render thread** once per frame, and th
 
 ## Instructions
 
-- `AGENTS.md` — porting rules: exact ASM correspondence, control flow (`goto`/fallthrough), naming, data types, build
+- `AGENTS.md` — agent guide: build commands, code map, pitfalls, porting rules (exact ASM correspondence, `goto`/fallthrough, naming, types)
+- `CLAUDE.md` — Claude Code entry point; imports `AGENTS.md` and `PROGRESS.md`
+- `PROGRESS.md` — current status, known issues and next steps (read at session start, update at session end)
 - `PORTING.md` — checklist of all top-level functions from the disassembly with C function mapping and verification status
 
 ## License
