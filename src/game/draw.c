@@ -569,9 +569,10 @@ void string_to_screen_buffer(uint8_t x, uint8_t y, const uint8_t *str) {
 
     uint16_t ppu_addr = ((uint16_t)buf_hi << 8) | lo;
     uint8_t index = 0;
+    uint8_t value;
 
 at_:
-    uint8_t value = str[index];
+    value = str[index];
     Screen_Buffer[pos++] = value;
     if (value == 0xFF) goto at__;
 
@@ -600,9 +601,10 @@ void save_str_to_scr_buffer(uint8_t x, uint8_t y, const uint8_t *str) {
 
     Screen_Buffer[pos++] = buf_hi;
     Screen_Buffer[pos++] = lo;
+    uint8_t val;
 
 at_:
-    uint8_t val = *src;
+    val = *src;
     if ((int8_t)val < 0) goto at__;
     val = (uint8_t)(val + Char_Index_Base);
 

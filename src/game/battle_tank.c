@@ -132,8 +132,10 @@ void ice_move(uint8_t slot) {
         goto End_Ice_Move;    /* ASM: BNE End_Ice_Move — frame%4==2: skip */
     }
 
+    uint8_t player;
+
 at_: /* ASM: @_ */
-    uint8_t player = 1;
+    player = 1;
 
 loop: /* ASM: @loop */
     {
@@ -146,6 +148,8 @@ loop: /* ASM: @loop */
             goto nextTank;  /* skip spawning tanks */
         }
 
+        uint8_t ice_status;
+        uint8_t button_state;
         uint8_t blink = Player_Blink_Timer[player];
         if (blink == 0u) {
             goto at____;
@@ -154,7 +158,7 @@ loop: /* ASM: @loop */
         goto usual_Tank;
 
 at____: /* ASM: @____ */
-        uint8_t ice_status = Player_Ice_Status[player];
+        ice_status = Player_Ice_Status[player];
         if ((int8_t)ice_status >= 0) {
             goto at___;
         }
@@ -163,7 +167,7 @@ at____: /* ASM: @____ */
         }
 
 at___: /* ASM: @___ */
-        uint8_t button_state = player == 0 ? Joypad1_Buttons : Joypad2_Buttons;
+        button_state = player == 0 ? Joypad1_Buttons : Joypad2_Buttons;
         uint8_t dir = button_to_direction_index(button_state);
         Temp = dir;
         if ((int8_t)dir < 0) {

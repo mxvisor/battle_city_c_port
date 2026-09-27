@@ -16,7 +16,7 @@ cmake --build build -j8                  # бинарник: build/battle_city
 ```
 
 - Тестов нет. Проверка = сборка без новых предупреждений + ручной прогон нужного экрана.
-- CI (`.github/workflows/ci.yml`, на каждый push): SDL2/SDL3 × Release/Debug + `DEBUG_SCREENS`, флаги `-Werror -Wno-error=unused-label -Wno-error=pedantic`, 10-секундный headless-запуск. Локальный аналог:
+- CI (`.github/workflows/ci.yml`, на каждый push): SDL2/SDL3 × Release/Debug + `DEBUG_SCREENS`, флаги `-Werror -Wno-error=unused-label`, 10-секундный headless-запуск. Локальный аналог:
   `SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy SDL_RENDER_DRIVER=software timeout 10 ./build/battle_city` (код 124 = не упал).
 - Без SDL (например, в облачном контейнере) проверяй синтаксис так:
   `for f in src/game/*.c src/nes/*.c; do gcc -std=c11 -fsyntax-only -Wall -Wextra -Wpedantic -Wno-unused-parameter -Isrc -Isrc/game -Isrc/nes $f; done`

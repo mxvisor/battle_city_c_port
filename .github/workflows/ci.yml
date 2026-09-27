@@ -12,9 +12,8 @@ concurrency:
 env:
   SDL3_VERSION: release-3.2.24
   # -Wunused-label ожидаемы (ASM-метки сохраняются намеренно, см. AGENTS.md).
-  # -Wpedantic «label before declaration» — известная проблема из PROGRESS.md.
   # Любое другое предупреждение валит сборку.
-  STRICT_CFLAGS: -Werror -Wno-error=unused-label -Wno-error=pedantic
+  STRICT_CFLAGS: -Werror -Wno-error=unused-label
 
 jobs:
   linux:
